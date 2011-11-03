@@ -1,0 +1,373 @@
+<?php
+
+define('STEP_IS_FINAL', 1);
+
+/**
+ * Collects all hook_wizard implementations
+ */
+function _wizard_implements() {
+  $wizard = array();
+  foreach(module_list() as $module) {
+    if($data = module_invoke($module, 'wizard')) {
+      $wizard = array_merge($data, $wizard);
+    }
+  }
+  
+  return $wizard;
+}
+
+/**
+ * Collects all hook_steps implementations
+ */
+function _steps_implements() {
+  $steps = steps_get_steps();
+  /*
+  $steps = array();
+  foreach(module_list() as $module) {
+    if($data = module_invoke($module, 'steps')) {
+      $steps = array_merge($data, $steps);
+    }
+  }
+  */
+  
+  return $steps;
+}
+
+/**
+ * Implements hook_enable()
+ */
+function steps_enable() {
+  /**
+   * Create all menu links implementing hook_wizard
+   */
+  $wizards = _wizard_implements();
+  foreach($wizards as $key => $element) {
+    $wizard = new stdClass();
+    $wizard->wizard = $key;
+    $wizard->title = check_plain($element['title']);
+    $wizard->main_path = check_plain($element['main_path']);
+    $wizard->start_path = check_plain($element['start_path']);
+    $wizard->end_path = check_plain($element['end_path']);
+    
+    steps_wizard_ops($wizard);
+  }
+  
+  /**
+   * Create all menus implementing hook_steps
+   * There is a problem with how the db_insert is handling array of arrays
+   * like in options and validations
+   */
+  $steps = _steps_implements();
+  foreach($steps as $key => $element) {
+    $step = new stdClass();
+    $step->step = $key;
+    $step->wizard = check_plain($element['wizard']);
+    $step->title = check_plain($element['title']);
+    $step->path = check_plain($element['path']);
+    $step->description = isset($element['description']) ? check_plain($element['description']) : NULL;
+    $step->component_type = $element['component']['type'];
+    $step->component_options = isset($element['component']['options']) ? $element['component']['options'] : NULL;
+    $step->component_validation = isset($element['component']['validation']) ? $element['component']['validation'] : NULL;
+    $step->component_default = isset($element['component']['default']) ? $element['component']['default'] : NULL;
+    $step->component_redirect = isset($element['component']['redirect']) ? $element['component']['redirect'] : NULL;
+    $step->component_value = isset($element['component']['value']) ? $element['component']['value'] : NULL;
+    $step->component_callback = isset($element['component']['callback']) ? $element['component']['callback'] : NULL;
+
+    steps_steps_ops($step);
+  }
+}
+
+/**
+ * Implements hook_permission()
+ */
+function steps_permission() {
+  // Only create permissions to wizards
+  // If we create permissions to steps the whole API becomes really hard to manage
+  // but we can create permissions on the wizard level
+  if($wizard = _wizard_implements()) {
+    foreach($wizard as $key => $main) {
+      return array(
+        "configure wizard $key" => array(
+          'title' => t("Configure wizard !title", array('!title' => $main['title'])),
+          'description' => t("Configure the wizard !title", array('!title' => $main['title'])),
+        ),
+      );
+    }
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function steps_menu() {
+  $items = array();
+  
+  /**
+   * Create all wizards
+   * The path will be the main path but the page callback is a simple redirection to the
+   * start_path
+   */
+  $wizards = steps_get_wizard();
+  foreach($wizards as $wizard) {
+    $items[$wizard->main_path] = array(
+      'title' => $wizard->title,
+      'page callback' => '_steps_redirect',
+      'page arguments' => array($wizard->start_path),
+      'access arguments' => array("configure form " . $wizard->wizard),
+      'type' => MENU_NORMAL_ITEM,
+    );  
+  }
+  
+  // Implement all steps paths
+  if($steps = _steps_implements()) {
+    foreach($steps as $key => $step) {
+      $items[$step->path] = array(
+        'title' => $step->title,
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array("steps_form", $step->step),
+        'access arguments' => array("configure wizard " . $step->wizard),
+        'type' => MENU_NORMAL_ITEM,
+      );  
+    }
+  }
+   
+  /**
+   * Remove later
+   */
+  $items['admin/config/steps'] = array(
+    'title' => 'Steps',
+    'description' => 'Debug steps',
+    'page callback' => 'steps_debug',
+    'access arguments' => array("administer modules"),
+    'file' => 'steps.admin.inc',
+  );
+  
+  return $items;
+}
+
+/**
+ * Insert and update operations for wizards
+ */
+function steps_wizard_ops($wizard) {
+  // Check if the current wizard object exists
+  $result = db_select("steps_wizard", "w")
+            ->fields("w", array("wizard"))
+            ->condition("wizard", $wizard->wizard, "=")
+            ->execute()
+            ->fetchAssoc();  
+  
+  // If it does exists then update it, else, insert it
+  if($result) {
+    db_update("steps_wizard")
+      ->fields(array(
+        'title' => $wizard->title,
+        'main_path' => $wizard->main_path,
+        'start_path' => $wizard->start_path,
+        'end_path' => $wizard->start_path,
+      ))
+      ->condition("wizard", $wizard->wizard, "=")
+      ->execute();
+  }
+  else {
+    db_insert("steps_wizard")
+      ->fields(array(
+        'wizard' => $wizard->wizard,
+        'title' => $wizard->title,
+        'main_path' => $wizard->main_path,
+        'start_path' => $wizard->start_path,
+        'end_path' => $wizard->start_path,
+      ))
+      ->execute();
+  }
+}
+
+function steps_steps_ops($step) {
+  // Check if the current wizard object exists
+  $result = db_select("steps")
+            ->fields("steps")
+            ->condition("step", $step->step, "=")
+            ->execute()
+            ->fetchAssoc();  
+  
+  // If it does exists then update it, else, insert it
+  if($result) {
+    db_update("steps")
+      ->fields(array(
+        'wizard' => $step->wizard,
+        'title' => $step->title,
+        'path' => $step->path,
+        'description' => $step->description,
+        'component_type' => $step->component_type,
+        'component_options' => $step->component_options,
+        'component_validation' => $step->component_validation,
+        'component_default' => $step->component_default,
+        'component_redirect' => $step->component_redirect,
+        'component_value' => $step->component_value,
+        'component_callback' => $step->component_callback,
+      ))
+      ->condition("step", $step->step, "=")
+      ->execute();
+  }
+  else {
+    // error here
+    db_insert("steps")
+      ->fields(array(
+        'step' => $step->step,
+        'wizard' => $step->wizard,
+        'title' => $step->title,
+        'path' => $step->path,
+        'description' => $step->description,
+        'component_type' => $step->component_type,
+        'component_options' => $step->component_options,
+        'component_validation' => $step->component_validation,
+        'component_default' => $step->component_default,
+        'component_redirect' => $step->component_redirect,
+        'component_value' => $step->component_value,
+        'component_callback' => $step->component_callback,
+      ))
+      ->execute();
+  }
+}
+
+function steps_delete_step($step) {
+  db_delete("steps")
+  ->condition("step", $step)
+  ->execute();
+}
+
+/**
+ * Gett all wizards from the database
+ */
+function steps_get_wizard() {
+  $result = db_query("SELECT * FROM {steps_wizard}")->fetchAll();
+  return $result;
+}
+
+/**
+ * Gett all steps from the database
+ */
+function steps_get_steps($wizard = NULL) {
+  if(isset($wizard)) {
+    $result = db_query("SELECT * FROM {steps} WHERE wizard = :wizard", array(':wizard' => $wizard->wizard))->fetchAll();  
+  }
+  else {
+    $result = db_query("SELECT * FROM {steps}")->fetchAll();
+  }
+  
+  return $result;
+}
+
+/**
+ * Get a step
+ */
+function steps_get_step($key) {
+  return db_query("SELECT * FROM {steps} WHERE step = :step", array(':step' => $key))->fetchAssoc();
+}
+
+
+
+
+
+
+
+
+
+
+/**
+ * Simple redirect from the main path to the start path
+ */
+function _steps_redirect($path) {
+  drupal_goto($path);
+}
+
+/**
+ * Form callback
+ */
+function steps_form($form, $args) {
+  $form = array();
+  
+  $step = steps_get_step($args['build_info']['args'][0]);
+
+  dsm($step);
+ 
+  
+  // Save the step to send it to the submit callback
+  $form['_step'] = array(
+    '#value' => $step,
+  );
+  
+  // Check if redirect exists
+  $redirect = isset($step['redirect']) ? $step['redirect'] : NULL;
+  
+  // If step is final
+  if($redirect != STEP_IS_FINAL) {
+    $variable = $step['step'];
+    $form[$variable] = array(
+      '#type' => $step['component_type'],
+      '#title' => $step['title'],
+      '#description' => $step['description'],
+      '#default_value' => $step['component_default'],
+      '#required' => TRUE,
+    );
+    
+    if(isset($step['component_options'])) {
+      $form[$variable]['#options'] = array(
+        'yes' => 'Yes',
+        'no' => 'No',
+      );  
+    }
+    
+    if($step['component_type'] == "markup") {
+      $form['markup'] = array(
+        '#markup' => $step['component_value'],
+      );
+    }
+    
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t("Next"),
+      '#submit' => array('steps_form_submit'),
+    );
+  }
+
+  if($step['component_type'] == "markup") {
+    $form['markup'] = array(
+      '#markup' => $step['component_value'],
+    );
+  }
+  
+  return $form;
+}
+
+/**
+ * Get the redirection value of the given option for a particular step
+ * 
+ * @return string the redirect path
+ */
+function steps_redirect_to($step, $option) {
+  return $step['validation'][$option];
+}
+
+/**
+ * Submit callback
+ */
+function steps_form_submit(&$form_state) {
+  $step = $form_state['_step']['#value'];
+  
+  // Save the variable
+  $variable = $step['variable'];
+  variable_set($variable, $form_state[$variable]['#value']);
+  
+  // If there is a redirect with no options go to it
+  if(isset($step['redirect'])) {
+    drupal_goto($step['redirect']);
+  }
+  else {
+    $option = $form_state[$step['variable']]['#value'];
+    $redirect = steps_redirect_to($step, $option);
+  
+    drupal_goto($redirect);  
+  }
+}
+
+

@@ -1,0 +1,5 @@
+name = Steps Example
+description = Example for Steps API
+core = 7.x
+dependencies[] = steps
+package = "Steps"

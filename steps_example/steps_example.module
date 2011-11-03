@@ -1,0 +1,83 @@
+<?php
+
+/**
+ * Implements hook_wizard
+ */
+function steps_example_wizard() {
+  $wizard = array();
+  
+  $wizard['evento'] = array(
+    'title' => 'Evento',
+    'main_path' => 'settings/evento',
+    'start_path' => 'settings/evento/costo',
+    'end_path' => 'settings/evento/gracias',
+  );
+  
+  return $wizard;
+}
+
+/**
+ * Implements hook_steps
+ */
+function steps_example_steps() {
+  // Build steps for Wizard 'evento'
+  $steps = array();
+  
+  $steps['costo'] = array(
+    'wizard' => 'evento',
+    'path' => 'settings/evento/costo',
+    'component' => array(
+      'type' => 'radios',
+      'options' => array(
+        'yes' => t("Yes"),
+        'no' => t("No"),
+      ),
+      'validation' => array(
+        'yes' => 'settings/evento/instrucciones-con-costo',
+        'no' => 'settings/evento/fechas',
+      ),
+      'default' => 'no',
+    ),
+    'title' => t("Evento tiene costo?"),
+    'description' => t("Please select if this event has any cost"),
+  );
+  
+  $steps['instrucciones-con-costo'] = array(
+    'wizard' => 'evento',
+    'path' => 'settings/evento/instrucciones-con-costo',
+    'component' => array(
+      'type' => 'textarea',
+      'redirect' => 'settings/evento/fechas'
+    ),
+    'title' => 'Instrucciones de evento con costo',
+    'description' => t("Escriba las instrucciones y precio del evento"),
+  );
+  
+  $steps['fechas'] = array(
+    'wizard' => 'evento',
+    'path' => "settings/evento/fechas",
+    'component' => array(
+      'type' => 'form',
+      'callback' => '_custom_form_fechas',
+      'redirect' => 'settings/evento/gracias'
+    ),
+    'title' => t("Fechas")
+  );
+  
+  $steps['gracias'] = array(
+    'wizard' => 'evento',
+    'path' => 'settings/evento/gracias',
+    'title' => 'Gracias',
+    'component' => array(
+      'type' => 'markup',
+      'value' => t("Gracias. Ha terminado la configuración"),
+      'redirect' => STEP_IS_FINAL,
+    ),
+  );
+  
+  return $steps;
+}
+
+function _custom_form_fechas($form, $step) {
+  
+}

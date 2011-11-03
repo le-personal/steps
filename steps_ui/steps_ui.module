@@ -1,0 +1,115 @@
+<?php
+/**
+ * @file steps_ui.module
+ * TODO: Enter file description here.
+ */
+
+/**
+ * Implementation of hook_permissions
+ */
+
+ 
+/**
+ * Implementation of hook_menu().
+ */
+function steps_ui_menu() {
+  // Main page 
+  $items['admin/structure/steps'] = array(
+    'title' => 'Steps',
+    'description' => 'Administer the steps and wizards',
+    'page callback' => 'steps_ui_wizard_page',
+    'access arguments' => array('administer steps'),
+    'weight' => 0,
+    'type' => MENU_NORMAL_ITEM,
+    'file path' => drupal_get_path("module", "steps_ui"), 
+    'file' => 'steps_ui.admin.inc'
+  );
+  
+  // Admin wizard page
+  $items['admin/structure/steps/wizard'] = array(
+    'title' => 'Administer Wizards',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  
+  // Create new wizard page
+  $items['admin/structure/steps/wizard/new'] = array(
+    'title' => 'New wizard',
+    'description' => 'Create wizard',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('steps_ui_wizard_form'),
+    'access arguments' => array('administer steps'),
+    'weight' => 0,
+    'type' => MENU_LOCAL_ACTION,
+    'file path' => drupal_get_path("module", "steps_ui"), 
+    'file' => 'steps_ui.admin.inc'
+  );
+  
+  // Edit wizard page
+  
+  // Steps page
+  $items['admin/structure/steps/wizard/%/steps'] = array(
+    'title' => 'Steps',
+    'description' => 'Administer the steps for a wizard',
+    'page callback' => 'steps_ui_steps_page',
+    'page arguments' => array(4),
+    'access arguments' => array('administer steps'),
+    'weight' => 0,
+    'file path' => drupal_get_path("module", "steps_ui"), 
+    'file' => 'steps_ui.admin.inc'
+  );
+  
+  // Create step page
+  $items['admin/structure/steps/wizard/%/steps/new'] = array(
+    'title' => 'New step',
+    'description' => 'Create step',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('steps_ui_step_form', 4),
+    'access arguments' => array('administer steps'),
+    'weight' => 0,
+    'type' => MENU_LOCAL_ACTION,
+    'file path' => drupal_get_path("module", "steps_ui"), 
+    'file' => 'steps_ui.admin.inc'
+  );
+  
+  // View step
+  $items['admin/structure/steps/wizard/%/steps/%/view'] = array(
+    'title' => 'View step',
+    'description' => 'View step',
+    'page callback' => 'steps_ui_step_view',
+    'page arguments' => array(4, 6),
+    'access arguments' => array('administer steps'),
+    'weight' => 0,
+    'type' => MENU_CALLBACK,
+    'file path' => drupal_get_path("module", "steps_ui"), 
+    'file' => 'steps_ui.admin.inc'
+  );
+  
+  // Edit step page
+  $items['admin/structure/steps/wizard/%/steps/%/edit'] = array(
+    'title' => 'Edit step',
+    'description' => 'Edit step',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('steps_ui_step_form', 4, 6),
+    'access arguments' => array('administer steps'),
+    'weight' => 0,
+    'type' => MENU_CALLBACK,
+    'file path' => drupal_get_path("module", "steps_ui"), 
+    'file' => 'steps_ui.admin.inc'
+  );
+  
+  // Edit step page
+  $items['admin/structure/steps/wizard/%/steps/%/delete'] = array(
+    'title' => 'Delete step',
+    'description' => 'Delete step',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('steps_ui_step_delete_form', 4, 6),
+    'access arguments' => array('administer steps'),
+    'weight' => 0,
+    'type' => MENU_CALLBACK,
+    'file path' => drupal_get_path("module", "steps_ui"), 
+    'file' => 'steps_ui.admin.inc'
+  );
+  
+  return $items;
+}
+

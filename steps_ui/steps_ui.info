@@ -1,0 +1,6 @@
+name = Steps UI
+description = Provides a UI to create and administer steps
+dependencies[] = steps
+package = steps
+core = 7.x
+files[] = steps_ui.module

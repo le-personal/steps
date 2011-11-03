@@ -1,0 +1,168 @@
+<?php 
+
+/**
+ * Implements hook_install()
+ */
+function steps_install() {
+
+}
+
+/**
+ * Implements hook_uninstall()
+ */
+function steps_uninstall() {
+
+}
+
+/**
+ * Implements hook_schema()
+ */
+function steps_schema() {
+  $schema['steps'] = array(
+    'description' => 'The base table for steps.', 
+    'fields' => array(
+      'step' => array(
+        'description' => 'The unique key for this step', 
+        'type' => 'varchar', 
+        'length' => 32, 
+        'not null' => TRUE, 
+        'default' => '',
+      ), 
+      'wizard' => array(
+        'description' => 'The wizard key', 
+        'type' => 'varchar', 
+        'length' => 12, 
+        'not null' => TRUE, 
+        'default' => '',
+      ), 
+      'title' => array(
+        'description' => 'The title of this step', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => TRUE, 
+        'default' => '',
+      ), 
+      'path' => array(
+        'description' => 'The path for this step', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => TRUE, 
+        'default' => '',
+      ),
+      'description' => array(
+        'description' => 'Helper description for the step form element', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => FALSE, 
+        'default' => '',
+      ),
+      'component_type' => array(
+        'description' => 'The component type', 
+        'type' => 'varchar', 
+        'length' => 32, 
+        'not null' => TRUE, 
+        'default' => '',
+      ),
+      'component_options' => array(
+        'description' => 'Options for the form element', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => FALSE, 
+        'default' => '',
+      ),
+      'component_validation' => array(
+        'description' => 'Validation', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => FALSE, 
+        'default' => '',
+      ),
+      'component_default' => array(
+        'description' => 'Default values', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => FALSE, 
+        'default' => '',
+      ),
+      'component_redirect' => array(
+        'description' => 'Redirect path', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => FALSE, 
+        'default' => '',
+      ),
+      'component_value' => array(
+        'description' => 'Value of the component', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => FALSE, 
+        'default' => '',
+      ),
+      'component_callback' => array(
+        'description' => 'Callback to load', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => FALSE, 
+        'default' => '',
+      ),
+    ), 
+    'indexes' => array(
+      'title' => array('title'), 
+      'path' => array('path'), 
+    ), 
+    'unique keys' => array(
+      'step' => array('step'),
+    ), 
+    'foreign keys' => array(
+      'wizard' => array(
+        'table' => 'steps_wizard', 
+        'columns' => array('wizard' => 'wizard'),
+      ), 
+    ), 
+    'primary key' => array('step'),
+  );
+
+  $schema['steps_wizard'] = array(
+    'description' => 'Main base table for wizards', 
+    'fields' => array(
+      'wizard' => array(
+        'description' => 'The wizard key', 
+        'type' => 'varchar', 
+        'length' => 32, 
+        'not null' => TRUE, 
+        'default' => '',
+      ), 
+      'title' => array(
+        'description' => 'The title of this wizard', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => TRUE, 
+        'default' => '',
+      ), 
+      'main_path' => array(
+        'description' => 'The main path for this step', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => TRUE, 
+        'default' => '',
+      ),
+      'start_path' => array(
+        'description' => 'The path for this step', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => TRUE, 
+        'default' => '',
+      ),
+      'end_path' => array(
+        'description' => 'The path for this step', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => TRUE, 
+        'default' => '',
+      ),
+    ), 
+    'primary key' => array('wizard'), 
+  );
+
+  return $schema;
+}
