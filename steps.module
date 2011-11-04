@@ -229,18 +229,33 @@ function steps_steps_ops($step) {
   }
 }
 
-function steps_delete_step($step) {
-  db_delete("steps")
-  ->condition("step", $step)
-  ->execute();
-}
-
 /**
  * Gett all wizards from the database
  */
-function steps_get_wizard() {
-  $result = db_query("SELECT * FROM {steps_wizard}")->fetchAll();
+function steps_get_wizard($wizard = NULL) {
+  if(isset($wizard)) {
+    $result = db_query("SELECT * FROM {steps_wizard} WHERE wizard = :wizard", array(":wizard" => $wizard))->fetchAssoc();  
+  }
+  else {
+    $result = db_query("SELECT * FROM {steps_wizard}")->fetchAll();
+  }
   return $result;
+}
+
+/**
+ * Delete wizard
+ */
+function steps_delete_wizard($wizard) {
+  
+  // Delete all steps
+  $steps = db_query("SELECT * FROM {steps} WHERE wizard = :wizard", array(':wizard' => $wizard))->fetchAll();
+  foreach($steps as $step) {
+    steps_delete_step($step->step);
+  }
+  
+  db_delete("steps_wizard")
+  ->condition("wizard", $wizard, "=")
+  ->execute();
 }
 
 /**
@@ -264,14 +279,14 @@ function steps_get_step($key) {
   return db_query("SELECT * FROM {steps} WHERE step = :step", array(':step' => $key))->fetchAssoc();
 }
 
-
-
-
-
-
-
-
-
+/**
+ * Delete step
+ */
+function steps_delete_step($step) {
+  db_delete("steps")
+  ->condition("step", $step)
+  ->execute();
+}
 
 /**
  * Simple redirect from the main path to the start path

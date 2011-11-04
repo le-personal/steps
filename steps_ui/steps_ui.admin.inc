@@ -24,7 +24,8 @@ function steps_ui_wizard_page() {
     'field' => 'end_path',
     'sort' => 'asc',
   );
-  $header[] = array('data' => t('Operations'));
+  $header[] = array("data" => t("Wizard operations"));
+  $header[] = array('data' => t('Steps operations'));
   
   $query = db_select('steps_wizard')->extend('PagerDefault')->extend('TableSort');
   $result = $query
@@ -41,27 +42,43 @@ function steps_ui_wizard_page() {
     $row['data']['main_path'] = check_plain($data->main_path);
     $row['data']['start_path'] = check_plain($data->start_path);
     $row['data']['end_path'] = check_plain($data->end_path);
-    $operations = array();
-    $operations['edit-wizard'] = array(
+    
+    $operations_wizard = array();
+    $operations_wizard['edit-wizard'] = array(
       'title' => t('edit wizard'), 
-      'href' => "admin/structure/steps/edit/wizard/$data->wizard", 
+      'href' => "admin/structure/steps/wizard/$data->wizard/edit", 
       'query' => $destination,
     );
-    $operations['view-steps'] = array(
+    $operations_wizard['delete-wizard'] = array(
+      'title' => t('delete wizard'), 
+      'href' => "admin/structure/steps/wizard/$data->wizard/delete", 
+      'query' => $destination,
+    );
+    
+    $row['data']['operations_wizard'] = array(
+      'data' => array(
+        '#theme' => 'links', 
+        '#links' => $operations_wizard, 
+        '#attributes' => array('class' => array('links', 'inline', 'nowrap')),
+      ),
+    );
+
+    $operations_steps = array();
+    $operations_steps['view-steps'] = array(
       'title' => t('view steps'), 
       'href' => "admin/structure/steps/wizard/$data->wizard/steps", 
       'query' => $destination,
     );
-    $operations['add-steps'] = array(
+    $operations_steps['add-steps'] = array(
       'title' => t('add steps'), 
-      'href' => "admin/structure/steps/wizard/$data->wizard/new/step", 
+      'href' => "admin/structure/steps/wizard/$data->wizard/steps/new", 
       'query' => $destination,
     );
     
     $row['data']['operations'] = array(
       'data' => array(
         '#theme' => 'links', 
-        '#links' => $operations, 
+        '#links' => $operations_steps, 
         '#attributes' => array('class' => array('links', 'inline', 'nowrap')),
       ),
     );
@@ -83,19 +100,29 @@ function steps_ui_wizard_page() {
 /**
  * Create wizards form
  */
-function steps_ui_wizard_form($form) {
+function steps_ui_wizard_form($form, $args) {
   $form = array();
   
+ if(isset($args['build_info']['args'][0])) {
+    $wizard = steps_get_wizard($args['build_info']['args'][0]);  
+  }
+    
   $form['wizard'] = array(
     '#type' => 'textfield',
     '#title' => t("Wizard unique key"),
     '#required' => TRUE,
+    '#default_value' => isset($wizard['wizard']) ? $wizard['wizard'] : NULL,
   );
+  
+  if(isset($wizard['wizard'])) {
+    $form['wizard']['#disabled'] = TRUE;
+  }
   
   $form['title'] = array(
     '#type' => 'textfield',
     '#title' => t("Wizard title"),
     '#required' => TRUE,
+    '#default_value' => isset($wizard['title']) ? $wizard['title'] : NULL,
   );
   
   $form['main_path'] = array(
@@ -103,6 +130,7 @@ function steps_ui_wizard_form($form) {
     '#title' => t("Main path"),
     '#description' => t("Steps will use the main path to create a menu link which can be used to start the wizard"),
     '#required' => TRUE,
+  	'#default_value' => isset($wizard['main_path']) ? $wizard['main_path'] : NULL,
   );
   
   $form['start_path'] = array(
@@ -110,6 +138,7 @@ function steps_ui_wizard_form($form) {
     '#title' => t("Start path"),
     '#description' => t("This is the first step that will be called"),
     '#required' => TRUE,
+  	'#default_value' => isset($wizard['start_path']) ? $wizard['start_path'] : NULL,
   );
   
   $form['end_path'] = array(
@@ -117,9 +146,10 @@ function steps_ui_wizard_form($form) {
     '#title' => t("End path"),
     '#description' => t("This is the last step. usually, to provent problems, this page is a thanks page or a confirmation page, your wizard must end in this path and the previous to last step must redirect here"),
     '#required' => TRUE,
+  	'#default_value' => isset($wizard['end_path']) ? $wizard['end_path'] : NULL,
   );
   
-  $form['actions'] = array();
+  $form['actions']['#type'] = 'actions';
   
   $form['actions']['submit'] = array(
     '#type' => 'submit',
@@ -135,6 +165,7 @@ function steps_ui_wizard_form($form) {
 function steps_ui_wizard_form_submit(&$form, &$form_state) {
   $values = $form_state['values'];
   
+  // Build the wizard object
   $wizard = new stdClass();
   $wizard->wizard = check_plain($values['wizard']);
   $wizard->title = check_plain($values['title']);
@@ -142,11 +173,77 @@ function steps_ui_wizard_form_submit(&$form, &$form_state) {
   $wizard->start_path = check_plain($values['start_path']);
   $wizard->end_path = check_plain($values['end_path']);
   
+  // Save the wizard
   steps_wizard_ops($wizard);
   
-  drupal_set_message("The wizard !wizard has been saved", array('!wizard' => $wizard->title));
-  // @todo redirect to the add steps page
+  // Alert the user that the wizard was created
+  drupal_set_message(
+    t("The wizard !wizard has been saved, now !add steps", 
+      array(
+      	'!wizard' => $wizard->title,
+      	'!add' => l(t("add"), "admin/structure/steps/wizard/$wizard->wizard/steps/new")
+      )
+    )
+  );
+  
+  // Redirect to the steps page for the newly created wizard
+  drupal_goto("admin/structure/steps/wizard/$wizard->wizard/steps");  
 }
+
+/**
+ * Delete steps
+ */
+function steps_ui_wizard_delete($form, $args) {
+  $form = array();
+  
+  if(isset($args['build_info']['args'][0])) {
+    $wizard = steps_get_wizard($args['build_info']['args'][0]);  
+  }
+    
+  $form['_wizard'] = array(
+    '#type' => 'hidden',
+    '#value' => $wizard,
+  );
+  
+  drupal_set_title(t("Are you sure you want to delete the wizard !wizard?", array('!wizard' => $wizard['wizard'])));
+  
+  $form['message'] = array(
+    '#markup' => t("This will also delete all steps related to this wizard.")
+  );
+  
+  $form['actions']['#type'] = 'actions';
+  
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Delete'),
+    '#submit' => array("steps_ui_wizard_delete_delete"),
+  );
+  
+  $form['actions']['cancel'] = array(
+    '#type' => 'submit',
+    '#value' => t("Cancel"),
+  	'#submit' => array("steps_ui_wizard_delete_cancel"),
+  );
+  
+  return $form;
+}
+
+function steps_ui_wizard_delete_delete(&$form, &$form_state) {
+  $values = $form_state['values'];
+    
+  steps_delete_wizard($values['_wizard']["wizard"]);
+  
+  drupal_goto("admin/structure/steps");
+}
+
+function steps_ui_wizard_delete_cancel(&$form, &$form_state) {
+  $values = $form_state['values'];
+  drupal_goto("admin/structure/steps");
+}
+
+
+
+
 
 /**
  * Get all steps for a given wizard
@@ -344,7 +441,7 @@ function steps_ui_step_form($form, $args) {
   	'#default_value' => isset($step['component_callback']) ? $step['component_callback'] : NULL,
   );
   
-  $form['actions'] = array();
+  $form['actions']['#type'] = 'actions';
   
   $form['actions']['submit'] = array(
     '#type' => 'submit',
@@ -415,13 +512,15 @@ function steps_ui_step_delete_form($form, $args) {
   
   drupal_set_title(t("Are you sure you want to delete the step !step?", array('!step' => $step['step'])));
   
-  $form['submit'] = array(
+  $form['actions']['#type'] = 'actions';
+  
+  $form['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Delete'),
     '#submit' => array("steps_ui_step_delete_delete"),
   );
   
-  $form['cancel'] = array(
+  $form['actions']['cancel'] = array(
     '#type' => 'submit',
     '#value' => t("Cancel"),
   	'#submit' => array("steps_ui_step_delete_cancel"),

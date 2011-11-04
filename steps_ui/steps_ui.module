@@ -45,6 +45,30 @@ function steps_ui_menu() {
   );
   
   // Edit wizard page
+  $items['admin/structure/steps/wizard/%/edit'] = array(
+    'title' => 'Edit wizard',
+    'description' => 'Edit wizard',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('steps_ui_wizard_form', 4),
+    'access arguments' => array('administer steps'),
+    'weight' => 0,
+    'type' => MENU_CALLBACK,
+    'file path' => drupal_get_path("module", "steps_ui"), 
+    'file' => 'steps_ui.admin.inc'
+  );
+  
+  // Edit wizard page
+  $items['admin/structure/steps/wizard/%/delete'] = array(
+    'title' => 'Delete wizard',
+    'description' => 'Delete wizard',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('steps_ui_wizard_delete', 4),
+    'access arguments' => array('administer steps'),
+    'weight' => 0,
+    'type' => MENU_CALLBACK,
+    'file path' => drupal_get_path("module", "steps_ui"), 
+    'file' => 'steps_ui.admin.inc'
+  );
   
   // Steps page
   $items['admin/structure/steps/wizard/%/steps'] = array(
