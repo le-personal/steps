@@ -103,7 +103,7 @@ function steps_ui_wizard_page() {
 function steps_ui_wizard_form($form, $args) {
   $form = array();
   
- if(isset($args['build_info']['args'][0])) {
+  if(isset($args['build_info']['args'][0])) {
     $wizard = steps_get_wizard($args['build_info']['args'][0]);  
   }
     
@@ -402,7 +402,7 @@ function steps_ui_step_form($form, $args) {
     '#type' => 'textarea',
     '#rows' => 10,
     '#title' => t("Component options"),
-    '#description' => t("Write the array of options, do not include php tags. Example: array('yes' => 'Yes', 'no' => 'No')"),
+    '#description' => t("Enter the array of options, one per line, piped. Example: no|Disabled yes|Enabled"),
     '#default_value' => isset($step['component_options']) ? $step['component_options'] : NULL,
   );
   
@@ -410,7 +410,7 @@ function steps_ui_step_form($form, $args) {
     '#type' => 'textarea',
     '#rows' => 10,
     '#title' => t("Component validation"),
-    '#description' => t("Write the array of validation options, do not include php tags. Example: array('yes' => 'path1', 'no' => 'path2')"),
+    '#description' => t("Enter the array of validation options, one per line, piped. Example: no|path1 yes|path2"),
     '#default_value' => isset($step['component_validation']) ? $step['component_validation'] : NULL,
   );
   

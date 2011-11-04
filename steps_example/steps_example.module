@@ -78,6 +78,51 @@ function steps_example_steps() {
   return $steps;
 }
 
-function _custom_form_fechas($form, $step) {
+function steps_example_fechas_form(&$form) {
+  $form['tid'] = array(
+    '#type' => 'value',
+    '#value' => "hello",
+  );
+  
+  $form['sel'] = array(
+    '#type' => 'select',
+    '#title' => 'Select me',
+    '#options' => array(
+      'no', 'yes', 'maybe',
+    ),
+  );
+  
+  $form['start_date'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Start date',
+    '#description' => t("test")
+  );
+  
+  $form['end_date'] = array(
+    '#type' => 'textfield',
+    '#title' => 'End date',
+  );
+  
+  // Don't implement any redirects here
+  $form['#submit'][] = "steps_example_fechas_form_submit";
+  
+}
+
+/**
+ * Don't implement any redirects of any kind here, remember that
+ * after this submit callback is processed, Steps will keep running
+ * all the submit process
+ * 
+ * Process anything independently but remember to do anything you need to do
+ * steps will not interfiere here, once the submit callback finishes, it will
+ * continue the normal process
+ */
+function steps_example_fechas_form_submit($form, &$form_state) {
+  // Save values to the watchdog
+  watchdog("steps_example", $form_state['values']['start_date']);
+  watchdog("steps_example", $form_state['values']['end_date']);
+}
+
+function steps_example_steps_form_post_fecha_alter(&$form, &$form_state) {
   
 }

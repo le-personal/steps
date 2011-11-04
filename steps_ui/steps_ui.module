@@ -57,7 +57,7 @@ function steps_ui_menu() {
     'file' => 'steps_ui.admin.inc'
   );
   
-  // Edit wizard page
+  // Delete wizard page
   $items['admin/structure/steps/wizard/%/delete'] = array(
     'title' => 'Delete wizard',
     'description' => 'Delete wizard',

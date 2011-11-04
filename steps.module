@@ -163,7 +163,7 @@ function steps_wizard_ops($wizard) {
         'title' => $wizard->title,
         'main_path' => $wizard->main_path,
         'start_path' => $wizard->start_path,
-        'end_path' => $wizard->start_path,
+        'end_path' => $wizard->end_path,
       ))
       ->condition("wizard", $wizard->wizard, "=")
       ->execute();
@@ -175,7 +175,7 @@ function steps_wizard_ops($wizard) {
         'title' => $wizard->title,
         'main_path' => $wizard->main_path,
         'start_path' => $wizard->start_path,
-        'end_path' => $wizard->start_path,
+        'end_path' => $wizard->end_path,
       ))
       ->execute();
   }
@@ -297,57 +297,129 @@ function _steps_redirect($path) {
 
 /**
  * Form callback
+ * 
+ * @param $args the step key is passed directly from the url, from there
+ * will be calling the form everytime another step is given since the redirection
+ * for the next step is given in the submit callback, basically is just:
+ * 
+ * step_form(step1) -> step_form_submit(step1) -> step_form(step2) -> step_form_submit(step2) -> etc
  */
 function steps_form($form, $args) {
   $form = array();
   
+  // Should I check for access?
+  
   $step = steps_get_step($args['build_info']['args'][0]);
+  $stepkey = $step['step'];
+  $wizard = steps_get_wizard($step['wizard']);
+  $current_path = $step['path'];
+  
+  // Check if the current path is the final path
+  if($wizard['end_path'] == $current_path) {
+    $final_path = TRUE;
+  }
+  else {
+    $final_path = FALSE;
+  }
+  
+  drupal_alter("steps_form_pre", $form);
+  drupal_alter("steps_form_pre_" . $stepkey, $form);
   
   // Save the step to send it to the submit callback
   $form['_step'] = array(
     '#value' => $step,
   );
   
-  // Check if redirect exists
-  $redirect = isset($step['redirect']) ? $step['redirect'] : NULL;
-  
-  // If step is final
-  if($redirect != STEP_IS_FINAL) {
-    $variable = $step['step'];
-    $form[$variable] = array(
-      '#type' => $step['component_type'],
-      '#title' => $step['title'],
-      '#description' => $step['description'],
-      '#default_value' => $step['component_default'],
-      '#required' => TRUE,
-    );
-    
-    // Make them piped
-    if(isset($step['component_options'])) {
-      $form[$variable]['#options'] = array(
-        'yes' => 'Yes',
-        'no' => 'No',
-      );  
-    }
-    
-    if($step['component_type'] == "markup") {
-      $form['markup'] = array(
+  // Switch depending on the component_type of the step
+  // this way will be easier to ignore elements and validate them
+  // depending on our own specifications
+  drupal_alter("steps_form_" . $step['component_type'], $form);
+  switch($step['component_type']) {
+    case "radios" :
+    case "select" :
+      $form[$stepkey] = array(
+        '#type' => $step['component_type'],
+        '#title' => $step['title'],
+        '#description' => $step['description'],
+        '#default_value' => $step['component_default'],
+        '#required' => TRUE,
+      );
+      
+      if(isset($step['component_options'])) {
+        $options_arr = steps_pipelined_process_options($step['component_options']);
+        $form[$stepkey]['#options'] = $options_arr;
+      }
+      
+      break;
+      
+    case "textfield":
+      $form[$stepkey] = array(
+        '#type' => "textfield",
+        '#title' => $step['title'],
+        '#description' => $step['description'],
+        '#default_value' => $step['component_default'],
+        '#required' => TRUE,
+      );
+
+      break;
+      
+    case "textarea":
+      $form[$stepkey] = array(
+        '#type' => "textarea",
+        '#title' => $step['title'],
+        '#description' => $step['description'],
+        '#default_value' => $step['component_default'],
+        '#required' => TRUE,
+      );
+      break;
+      
+    case "checkboxes":
+      $form[$stepkey] = array(
+        '#type' => "checkboxes",
+        '#title' => $step['title'],
+        '#description' => $step['description'],
+        '#required' => TRUE,
+      );
+      
+      if(isset($step['component_options'])) {
+        $options_arr = steps_pipelined_process_options($step['component_options']);
+        $form[$stepkey]['#options'] = $options_arr;
+      }
+      break;
+      
+    case "markup":
+      $form[$stepkey] = array(
+        '#type' => "markup",
+        '#title' => $step['title'],
         '#markup' => $step['component_value'],
       );
-    }
-    
-    $form['submit'] = array(
+      break;
+
+    case "form":
+      // Print the form here
+      // $form = array_merge($form, drupal_get_form($step["component_callback"], $step));
+      // drupal_alter("steps_form_" . $step["component_callback"], $form);
+      $function = $step["component_callback"];
+      if(function_exists($function)) {
+        $form[] = $function($form);
+      }
+      
+      break;
+  }
+  
+  // Check if the path is the final path, if it is not, then show the button
+  if($final_path === FALSE) {
+    $form['actions']['#type'] = 'actions';
+    $form['actions']['submit'] = array(
       '#type' => 'submit',
       '#value' => t("Next"),
-      '#submit' => array('steps_form_submit'),
     );
   }
-
-  if($step['component_type'] == "markup") {
-    $form['markup'] = array(
-      '#markup' => $step['component_value'],
-    );
-  }
+  
+  $form['#submit'][] = "steps_form_submit";
+  
+  drupal_alter("steps_form_post_" . $stepkey, $form);
+  drupal_alter("steps_form_post", $form);
   
   return $form;
 }
@@ -359,29 +431,48 @@ function steps_form($form, $args) {
  */
 function steps_redirect_to($step, $option) {
   // Make them piped
-  return $step['validation'][$option];
+  $val_arr = steps_pipelined_process_options($step['component_validation']);
+  return $val_arr[$option];
 }
 
 /**
  * Submit callback
  */
-function steps_form_submit(&$form_state) {
-  $step = $form_state['_step']['#value'];
+function steps_form_submit($form, &$form_state) {
+  // Variable has the key of this step
+  $step = $form_state['complete form']['_step']['#value'];
+  $stepkey = $form_state['complete form']['_step']['#value']['step'];
   
-  // Save the variable
-  $variable = $step['variable'];
-  variable_set($variable, $form_state[$variable]['#value']);
-  
+  // variable_set($variable, $form_state[$variable]['#value']);
   // If there is a redirect with no options go to it
-  if(isset($step['redirect'])) {
-    drupal_goto($step['redirect']);
+  
+  if(!empty($step['component_redirect'])) { 
+    drupal_goto($step['component_redirect']);
   }
   else {
-    $option = $form_state[$step['variable']]['#value'];
+    $option = $form_state['values'][$stepkey];
     $redirect = steps_redirect_to($step, $option);
   
     drupal_goto($redirect);  
   }
+  
 }
 
-
+function steps_pipelined_process_options($values) {
+  // process the piped options
+  $lines = explode("\n", trim($values));
+  $matches = array();
+  $options_arr = array();
+  foreach ($lines as $line) {
+    $line = trim($line);
+  
+    if (preg_match('/^([^|]*)\|(.*)$/', $line, $matches)) {
+      $key = $matches[1];
+      $vals = $matches[2];
+      
+      $options_arr[$key] = $vals;
+    }
+  }
+  
+  return $options_arr;
+}
