@@ -302,9 +302,6 @@ function steps_form($form, $args) {
   $form = array();
   
   $step = steps_get_step($args['build_info']['args'][0]);
-
-  dsm($step);
- 
   
   // Save the step to send it to the submit callback
   $form['_step'] = array(
@@ -325,6 +322,7 @@ function steps_form($form, $args) {
       '#required' => TRUE,
     );
     
+    // Make them piped
     if(isset($step['component_options'])) {
       $form[$variable]['#options'] = array(
         'yes' => 'Yes',
@@ -360,6 +358,7 @@ function steps_form($form, $args) {
  * @return string the redirect path
  */
 function steps_redirect_to($step, $option) {
+  // Make them piped
   return $step['validation'][$option];
 }
 

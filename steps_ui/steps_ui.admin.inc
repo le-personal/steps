@@ -228,6 +228,9 @@ function steps_ui_wizard_delete($form, $args) {
   return $form;
 }
 
+/**
+ * Submit callback for delete operation
+ */
 function steps_ui_wizard_delete_delete(&$form, &$form_state) {
   $values = $form_state['values'];
     
@@ -236,14 +239,13 @@ function steps_ui_wizard_delete_delete(&$form, &$form_state) {
   drupal_goto("admin/structure/steps");
 }
 
+/**
+ * Submit callback for cancel operation
+ */
 function steps_ui_wizard_delete_cancel(&$form, &$form_state) {
   $values = $form_state['values'];
   drupal_goto("admin/structure/steps");
 }
-
-
-
-
 
 /**
  * Get all steps for a given wizard
@@ -529,6 +531,9 @@ function steps_ui_step_delete_form($form, $args) {
   return $form;
 }
 
+/**
+ * Submit callback for delete operation
+ */
 function steps_ui_step_delete_delete(&$form, &$form_state) {
   $values = $form_state['values'];
   
@@ -537,6 +542,9 @@ function steps_ui_step_delete_delete(&$form, &$form_state) {
   drupal_goto("admin/structure/steps/wizard/" . $values['_step']['wizard'] . "/steps");
 }
 
+/**
+ * Submit callback for cancel operation
+ */
 function steps_ui_step_delete_cancel(&$form, &$form_state) {
   $values = $form_state['values'];
   drupal_goto("admin/structure/steps/wizard/" . $values['_step']['wizard'] . "/steps");
