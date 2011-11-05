@@ -289,6 +289,68 @@ function steps_delete_step($step) {
 }
 
 /**
+ * Get the values of all steps using the same token
+ */
+function steps_value_get($token) {
+  $results = db_query("SELECT * FROM {steps_values} WHERE token = :token", array(':token' => $token))->fetchAll();
+  $data = array();
+  foreach($results as $result) {
+    $data[$result->step] = array(
+      'token' => $result->token,
+      'wizard' => $result->wizard,
+      'uid' => $result->uid,
+      'step' => $result->step,
+      'value' => $result->value
+    );
+  }
+  
+  return $data;
+}
+
+/**
+ * Perform operations on the steps_values table
+ * 
+ * @param $op
+ * -- insert Insert a value into the steps_value table
+ * -- delete Delete a value into the steps_value table
+ */
+function steps_value_op($op, $object) {
+  switch ($op) {
+    case "insert":
+       db_insert("steps_values")
+        ->fields(array(
+          'token' => $object['token'],
+          'wizard' => $object['wizard'],
+          'uid' => $object['uid'],
+          'step' => $object['step'],
+          'value' => $object['value'],
+        ))
+        ->execute();
+      break;
+
+    case "delete":
+      db_delete("steps_values")
+        ->condition("token", $object['token'])
+        ->execute();
+      break;
+  } 
+}
+
+/**
+ * Get all the steps values for a wizard
+ */
+function steps_value_get_by_wizard($wizard) {
+  return db_query("SELECT * FROM {steps_values} WHERE wizard = :wizard", array(':wizard' => $wizard))->fetchAssoc();
+}
+
+/**
+ * Get all steps values for a wizard in a given step
+ */
+function steps_value_get_by_wizard_and_step($wizard, $step) {
+  return db_query("SELECT * FROM {steps_values} WHERE wizard = :wizard AND step = :step", array(':wizard' => $wizard, ':step' => $step))->fetchAssoc();
+}
+
+/**
  * Simple redirect from the main path to the start path
  */
 function _steps_redirect($path) {
@@ -305,6 +367,7 @@ function _steps_redirect($path) {
  * step_form(step1) -> step_form_submit(step1) -> step_form(step2) -> step_form_submit(step2) -> etc
  */
 function steps_form($form, $args) {
+  global $user;
   $form = array();
   
   // Should I check for access?
@@ -314,20 +377,46 @@ function steps_form($form, $args) {
   $wizard = steps_get_wizard($step['wizard']);
   $current_path = $step['path'];
   
-  // Check if the current path is the final path
-  if($wizard['end_path'] == $current_path) {
-    $final_path = TRUE;
-  }
-  else {
-    $final_path = FALSE;
-  }
-  
   drupal_alter("steps_form_pre", $form);
   drupal_alter("steps_form_pre_" . $stepkey, $form);
   
   // Save the step to send it to the submit callback
   $form['_step'] = array(
     '#value' => $step,
+  );
+  
+  if($wizard['start_path'] == $current_path) {
+    // for protection, delete all records that correspond to this user
+    db_delete("steps_values")
+      ->condition("wizard", $step['wizard'])
+      ->condition("uid", $user->uid)
+      ->execute();
+    
+    // If this is the first path, create a new object
+    $token = drupal_hash_base64(drupal_random_bytes(55));
+    // The object will be incomplete until we add the step and the value, we just initialize it here
+    $build_object = array(
+      'wizard' => $wizard['wizard'],
+      'uid' => $user->uid,
+      'token' => $token
+    );
+  }
+  else {
+    // get the object using the wizard and the step and pass it again
+    $object = steps_value_get_by_wizard($step['wizard']);
+    $token = $object['token'];
+    
+    $build_object = array(
+      'wizard' => $object['wizard'],
+      'uid' => $object['uid'],
+      'token' => $token
+    );
+    
+  }
+  
+  $form['_build_object'] = array(
+    '#type' => 'value',
+    '#value' => $build_object
   );
   
   // Switch depending on the component_type of the step
@@ -406,6 +495,18 @@ function steps_form($form, $args) {
       
       break;
   }
+
+  // Check if the current path is the final path
+  if($wizard['end_path'] == $current_path) {
+    $final_path = TRUE;
+  }
+  else {
+    $final_path = FALSE;
+    $form['_is_final'] = array(
+      '#value' => FALSE,
+      '#type' => "value",
+    );
+  }
   
   // Check if the path is the final path, if it is not, then show the button
   if($final_path === FALSE) {
@@ -442,9 +543,48 @@ function steps_form_submit($form, &$form_state) {
   // Variable has the key of this step
   $step = $form_state['complete form']['_step']['#value'];
   $stepkey = $form_state['complete form']['_step']['#value']['step'];
+    
+  $get_build_object = $form_state['values']['_build_object'];
+  $build_object = array(
+    'step' => $stepkey,
+    "value" => $form_state['values'][$stepkey],
+  );
+  $finished_object = array_merge($get_build_object, $build_object);
+  steps_value_op("insert", $finished_object);
+  // Save the build object for each time we run submit
+  
   
   // variable_set($variable, $form_state[$variable]['#value']);
   // If there is a redirect with no options go to it
+  
+  $steps_wizard = array();
+  $value = $form_state['values'][$stepkey];
+  // dsm($form_state);
+  
+  
+  // Check if the path we're redirecting is the last one
+  $wizard = steps_get_wizard($step['wizard']);
+  // If the path we're redirecting is the path where the wizard ends then
+  // even though the submit callback doesn't really know that the last form
+  // callback is showing up, we tell the submit callback that this is the end
+  // and that there will be no other submit callback run (no button anymore)
+  // so perform all the last minute operations in the previous to last submit callback
+  if($step['component_redirect'] == $wizard['end_path']) {
+    // Also check if the form has no component_redirect but if the 
+    // selected option had as the validation path to redirect to the $wizard["end_path"]
+    
+    // Get the token
+    $token = $get_build_object['token'];
+    // Build the whole object using the token
+    $object = steps_value_get($token);
+    // Return the object
+    dsm($object);
+    
+    // Delete it from the db
+    db_delete("steps_values")
+      ->condition("token", $token)
+      ->execute();
+  }
   
   if(!empty($step['component_redirect'])) { 
     drupal_goto($step['component_redirect']);
@@ -454,10 +594,12 @@ function steps_form_submit($form, &$form_state) {
     $redirect = steps_redirect_to($step, $option);
   
     drupal_goto($redirect);  
-  }
-  
+  } 
 }
 
+/**
+ * Converts pipelined values into an array
+ */
 function steps_pipelined_process_options($values) {
   // process the piped options
   $lines = explode("\n", trim($values));

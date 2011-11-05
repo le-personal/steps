@@ -15,30 +15,10 @@ function steps_debug() {
   
   dsm($results);
   */
+  $token = "GKYr_XpCzCIFM0QgAa5SzI0QWQb7l7ByC6yth72vTqo";
+  $object = steps_value_get($token);
+  dsm($object);
   
-  $values = "
-  one|Hello World\n
-  two|Hola Mundo\n
-  ";
-  $output = "Hello";
-  
-$lines = explode("\n", trim($values));
-$matches = array();
-foreach ($lines as $line) {
-  $line = trim($line);
-
-  if (preg_match('/^([^|]*)\|(.*)$/', $line, $matches)) {
-    $key = $matches[1];
-    $vals = $matches[2];
-    
-    $arr[$key] = $vals;
-  }
-}
-
-
-  dsm($arr);
-  
-  
-  return $output;
+  return "HELLO";
  
 }

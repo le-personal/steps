@@ -163,6 +163,46 @@ function steps_schema() {
     ), 
     'primary key' => array('wizard'), 
   );
+  
+  $schema['steps_values'] = array(
+    'description' => 'Main base table to store values', 
+    'fields' => array(
+      'token' => array(
+        'description' => 'The title of this wizard', 
+        'type' => 'varchar', 
+        'length' => 55, 
+        'not null' => TRUE, 
+        'default' => '',
+      ),
+      'wizard' => array(
+        'description' => 'The wizard key', 
+        'type' => 'varchar', 
+        'length' => 32, 
+        'not null' => TRUE, 
+        'default' => '',
+      ),
+      'uid' => array(
+        'description' => 'The {users}.uid that owns this node; initially, this is the user that created it.', 
+        'type' => 'int', 
+        'not null' => TRUE, 
+        'default' => 0,
+      ),
+      'step' => array(
+        'description' => 'The path for this step', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => TRUE, 
+        'default' => '',
+      ),
+      'value' => array(
+        'description' => 'The path for this step', 
+        'type' => 'varchar', 
+        'length' => 255, 
+        'not null' => TRUE, 
+        'default' => '',
+      ),
+    ), 
+  );
 
   return $schema;
 }
