@@ -422,7 +422,7 @@ function steps_form($form, $args) {
   // Switch depending on the component_type of the step
   // this way will be easier to ignore elements and validate them
   // depending on our own specifications
-  drupal_alter("steps_form_" . $step['component_type'], $form);
+  drupal_alter("steps_form_" . $stepkey . '_' . $step['component_type'], $form);
   switch($step['component_type']) {
     case "radios" :
     case "select" :
@@ -551,6 +551,9 @@ function steps_form_submit($form, &$form_state) {
   );
   $finished_object = array_merge($get_build_object, $build_object);
   steps_value_op("insert", $finished_object);
+  
+  
+  
   // Save the build object for each time we run submit
   
   
@@ -561,6 +564,9 @@ function steps_form_submit($form, &$form_state) {
   $value = $form_state['values'][$stepkey];
   // dsm($form_state);
   
+  // We need to remove the database operation and use $_POST to save the values
+  // $_POST[$stepkey] = array_merge($get_build_object, $build_object);
+  // $_POST["test_" . $stepkey] = array_merge($_POST["test_" . $stepkey], $finished_object);
   
   // Check if the path we're redirecting is the last one
   $wizard = steps_get_wizard($step['wizard']);
@@ -575,15 +581,18 @@ function steps_form_submit($form, &$form_state) {
     
     // Get the token
     $token = $get_build_object['token'];
-    // Build the whole object using the token
-    $object = steps_value_get($token);
-    // Return the object
-    dsm($object);
+    // Build the array using the token
+    $data = steps_value_get($token);
     
     // Delete it from the db
     db_delete("steps_values")
       ->condition("token", $token)
       ->execute();
+      
+    // Now we process the data array here using hook_steps_$wizard
+    steps_invoke($step['wizard'], $data);
+    
+    
   }
   
   if(!empty($step['component_redirect'])) { 
@@ -593,8 +602,30 @@ function steps_form_submit($form, &$form_state) {
     $option = $form_state['values'][$stepkey];
     $redirect = steps_redirect_to($step, $option);
   
-    drupal_goto($redirect);  
+    drupal_goto($redirect);
   } 
+}
+
+/**
+ * Invoke all functions that do something with the data array
+ * Example, if our wizard is called "event", we would implement
+ * something like hook_steps_event(&$data) so we can
+ * manipulate the object at our will and do anything with it.
+ */
+function steps_invoke($wizard, &$data) {
+  $return = array();
+  foreach(module_implements("steps_" . $wizard) as $name) {
+    $function = $name . "_steps_" . $wizard;
+    $result = $function($data);
+    if(isset($result) && is_array($result)) {
+      $return = array_merge($return, $result);
+    }
+    else if(isset($result)){
+      $return[] = $result;
+    }
+  }
+  
+  return $return;
 }
 
 /**

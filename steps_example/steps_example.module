@@ -123,6 +123,12 @@ function steps_example_fechas_form_submit($form, &$form_state) {
   watchdog("steps_example", $form_state['values']['end_date']);
 }
 
-function steps_example_steps_form_post_fecha_alter(&$form, &$form_state) {
-  
-}
+/**
+ * Implement hook_steps_$wizard()
+ */
+function steps_example_steps_evento(&$data) {
+  // dsm($object);
+  foreach($data as $obj) {
+    watchdog("steps_example", "Let's do something with the object, like printing the step " . $obj['step'] . "and its value " . $obj['value']);  
+  }
+} 
