@@ -196,8 +196,8 @@ function steps_schema() {
       ),
       'value' => array(
         'description' => 'The path for this step', 
-        'type' => 'varchar', 
-        'length' => 255, 
+        'type' => 'text', 
+        'size' => "big", 
         'not null' => TRUE, 
         'default' => '',
       ),
@@ -205,4 +205,20 @@ function steps_schema() {
   );
 
   return $schema;
+}
+
+function steps_update_7100() {
+  db_change_field("steps", "component_options", "component_options", 
+    array('type' => 'text', 'size' => "big"));
+
+  db_change_field("steps", "component_validation", "component_validation", 
+    array('type' => 'text', 'size' => "big"));
+    
+  db_change_field("steps", "component_value", "component_value", 
+    array('type' => 'text', 'size' => "big"));
+}
+
+function steps_update_7200() {
+  db_change_field("steps_values", "value", "value",
+    array("type" => "text", "size" => "big"));
 }

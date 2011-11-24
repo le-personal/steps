@@ -428,7 +428,7 @@ function steps_form($form, $args) {
     case "select" :
       $form[$stepkey] = array(
         '#type' => $step['component_type'],
-        '#title' => $step['title'],
+        '#title' => isset($step['description']) ? $step['description'] : $step['title'],
         '#description' => $step['description'],
         '#default_value' => $step['component_default'],
         '#required' => TRUE,
@@ -444,7 +444,7 @@ function steps_form($form, $args) {
     case "textfield":
       $form[$stepkey] = array(
         '#type' => "textfield",
-        '#title' => $step['title'],
+        '#title' => isset($step['description']) ? $step['description'] : $step['title'],
         '#description' => $step['description'],
         '#default_value' => $step['component_default'],
         '#required' => TRUE,
@@ -455,7 +455,7 @@ function steps_form($form, $args) {
     case "textarea":
       $form[$stepkey] = array(
         '#type' => "textarea",
-        '#title' => $step['title'],
+        '#title' => isset($step['description']) ? $step['description'] : $step['title'],
         '#description' => $step['description'],
         '#default_value' => $step['component_default'],
         '#required' => TRUE,
@@ -465,7 +465,7 @@ function steps_form($form, $args) {
     case "checkboxes":
       $form[$stepkey] = array(
         '#type' => "checkboxes",
-        '#title' => $step['title'],
+        '#title' => isset($step['description']) ? $step['description'] : $step['title'],
         '#description' => $step['description'],
         '#required' => TRUE,
       );
@@ -543,12 +543,22 @@ function steps_form_submit($form, &$form_state) {
   // Variable has the key of this step
   $step = $form_state['complete form']['_step']['#value'];
   $stepkey = $form_state['complete form']['_step']['#value']['step'];
-    
+  $component_type = $form_state['complete form']['_step']['#value']['component_type'];
+  
   $get_build_object = $form_state['values']['_build_object'];
   $build_object = array(
     'step' => $stepkey,
-    "value" => $form_state['values'][$stepkey],
   );
+  
+  // Check if the form type is a checklist, in which case we need to
+  // serialize the value
+  if($component_type == "checkboxes") {
+    $build_object['value'] = serialize($form_state['values'][$stepkey]);
+  }
+  else {
+    $build_object['value'] = $form_state['values'][$stepkey];
+  }
+  
   $finished_object = array_merge($get_build_object, $build_object);
   steps_value_op("insert", $finished_object);
   
