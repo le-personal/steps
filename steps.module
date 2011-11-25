@@ -659,3 +659,28 @@ function steps_pipelined_process_options($values) {
   
   return $options_arr;
 }
+
+/*
+ * Implements hook_custom_theme()
+ */
+function steps_custom_theme() {
+  $admin_theme = variable_get('admin_theme');
+  $steps_theme = variable_get("steps_theme");
+  
+  if(isset($steps_theme)) {
+    $theme = $steps_theme;
+  }
+  else if(isset($admin_theme) && !isset($steps_theme)) {
+    $theme = $admin_theme;
+  }
+  
+  // Get all the paths
+  $paths = db_query("SELECT path FROM {steps}")->fetchAll();
+  // Loop
+  foreach($paths as $path) {
+    // Check if the current path is registered as a step path
+    if(current_path() == $path->path) {
+      return $theme;
+    }
+  }
+}
