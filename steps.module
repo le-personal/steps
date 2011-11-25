@@ -358,6 +358,13 @@ function _steps_redirect($path) {
 }
 
 /**
+ * Get current step by path
+ */
+function steps_get_step_by_path($path) {
+  return db_query("SELECT * FROM {steps} WHERE path = :path", array(':path' => $path))->fetchAssoc();
+}
+
+/**
  * Form callback
  * 
  * @param $args the step key is passed directly from the url, from there
