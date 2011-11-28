@@ -68,14 +68,12 @@ function steps_schema() {
         'type' => 'text', 
         'size' => 'big',
         'not null' => FALSE, 
-        'default' => '',
       ),      
       'component_validation' => array(
         'description' => 'Validation', 
         'type' => 'text', 
         'size' => 'big',
         'not null' => FALSE, 
-        'default' => '',
       ),
       'component_default' => array(
         'description' => 'Default values', 
@@ -96,7 +94,6 @@ function steps_schema() {
         'type' => 'text', 
         'size' => 'big',
         'not null' => FALSE, 
-        'default' => '',
       ),
       'component_callback' => array(
         'description' => 'Callback to load', 
