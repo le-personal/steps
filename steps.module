@@ -232,14 +232,20 @@ function steps_steps_ops($step) {
 /**
  * Gett all wizards from the database
  */
-function steps_get_wizard($wizard = NULL) {
+function steps_get_wizard($wizard = NULL, $reset = FALSE) {
+  static $wizards;
+  
   if(isset($wizard)) {
-    $result = db_query("SELECT * FROM {steps_wizard} WHERE wizard = :wizard", array(":wizard" => $wizard))->fetchAssoc();  
+    return db_query("SELECT * FROM {steps_wizard} WHERE wizard = :wizard", array(":wizard" => $wizard))->fetchAssoc();  
   }
-  else {
+  
+  if(!isset($wizards) || $reset) {
+    $wizards = array();
     $result = db_query("SELECT * FROM {steps_wizard}")->fetchAll();
+    $wizards = $result;
   }
-  return $result;
+  
+  return $wizards;
 }
 
 /**
@@ -262,6 +268,7 @@ function steps_delete_wizard($wizard) {
  * Gett all steps from the database
  */
 function steps_get_steps($wizard = NULL) {
+  
   if(isset($wizard)) {
     $result = db_query("SELECT * FROM {steps} WHERE wizard = :wizard", array(':wizard' => $wizard->wizard))->fetchAll();  
   }
@@ -690,4 +697,19 @@ function steps_custom_theme() {
       return $theme;
     }
   }
+}
+
+/**
+ * Implements hook_features_api()
+ */
+function steps_features_api() {
+  $features['wizard'] = array(
+    'name' => t("Wizard"),
+    'default_hook' => 'wizard_default_wizards',
+    'default_file' => FEATURES_DEFAULTS_INCLUDED,
+    'file' => drupal_get_path("module", "steps") . "/steps.features.inc",
+    'features_source' => TRUE,
+  );
+  
+  return $features;
 }

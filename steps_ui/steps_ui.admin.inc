@@ -27,12 +27,7 @@ function steps_ui_wizard_page() {
   $header[] = array("data" => t("Wizard operations"));
   $header[] = array('data' => t('Steps operations'));
   
-  $query = db_select('steps_wizard')->extend('PagerDefault')->extend('TableSort');
-  $result = $query
-    ->fields('steps_wizard')
-    ->orderByHeader($header)
-    ->limit(50)
-    ->execute();
+  $result = steps_get_wizard();
   
   $rows = array();
   $destination = drupal_get_destination();
