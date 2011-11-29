@@ -123,11 +123,12 @@ function steps_schema() {
     'description' => 'Main base table for wizards',
     'export' => array(
       'key' => 'wizard',
+      'primay key' => 'wizard',
       'identifier' => 'wizard',
       'default hook' => 'wizard_default_wizards',
       'api' => array(
         'owner' => 'steps',
-        'api' => 'wizard_default_wizards',
+        'api' => 'default_steps_wizards',
         'minimum_version' => 1,
         'current_version' => 1,
       ),

@@ -1,5 +1,7 @@
 <?php
 
+include_once("steps.features.inc");
+
 define('STEP_IS_FINAL', 1);
 
 /**
@@ -107,7 +109,7 @@ function steps_menu() {
    * The path will be the main path but the page callback is a simple redirection to the
    * start_path
    */
-  $wizards = steps_get_wizard();
+  $wizards = steps_get_wizards(TRUE);
   foreach($wizards as $wizard) {
     $items[$wizard->main_path] = array(
       'title' => $wizard->title,
@@ -246,6 +248,12 @@ function steps_get_wizard($wizard = NULL, $reset = FALSE) {
   }
   
   return $wizards;
+}
+
+
+function steps_get_wizards() {
+  ctools_include("export");
+  return ctools_export_crud_load_all("steps_wizard");
 }
 
 /**

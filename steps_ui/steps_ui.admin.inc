@@ -27,7 +27,8 @@ function steps_ui_wizard_page() {
   $header[] = array("data" => t("Wizard operations"));
   $header[] = array('data' => t('Steps operations'));
   
-  $result = steps_get_wizard();
+  $result = steps_get_wizards();
+  dsm($result);
   
   $rows = array();
   $destination = drupal_get_destination();
