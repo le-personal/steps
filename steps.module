@@ -634,8 +634,6 @@ function steps_form_submit($form, &$form_state) {
       
     // Now we process the data array here using hook_steps_$wizard
     steps_invoke($step['wizard'], $data);
-    
-    
   }
   
   if(!empty($step['component_redirect'])) { 
@@ -718,18 +716,3 @@ function steps_custom_theme() {
   }
 }
 
-/**
- * Implements hook_features_api()
- */
-function steps_features_api() {
-  $features['wizard'] = array(
-    'name' => t("Wizard"),
-    'default_hook' => 'wizard_default_wizards',
-    'default_file' => FEATURES_DEFAULTS_INCLUDED,
-    'file' => drupal_get_path("module", "steps") . "/steps.features.inc",
-    'features_source' => TRUE,
-  );
-  
-  return $features;
-}
- 

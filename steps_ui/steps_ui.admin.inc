@@ -231,6 +231,9 @@ function steps_ui_wizard_form_submit(&$form, &$form_state) {
     )
   );
   
+  // Clear the cache to rebuild menu
+  menu_cache_clear_all();
+  
   // Redirect to the steps page for the newly created wizard
   drupal_goto("admin/structure/steps/wizard/$wizard->wizard/steps");  
 }
