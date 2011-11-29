@@ -1,84 +1,18 @@
 <?php
 
-include_once("steps.features.inc");
-
 define('STEP_IS_FINAL', 1);
 
-/**
- * Collects all hook_wizard implementations
- */
-function _wizard_implements() {
-  $wizard = array();
-  foreach(module_list() as $module) {
-    if($data = module_invoke($module, 'wizard')) {
-      $wizard = array_merge($data, $wizard);
-    }
-  }
-  
-  return $wizard;
-}
+include_once("steps.queries.inc");
+include_once("wizards.queries.inc");
+include_once("values.queries.inc");
 
 /**
- * Collects all hook_steps implementations
+ * Simple redirect from the main path to the start path
  */
-function _steps_implements() {
-  $steps = steps_get_steps();
-  /*
-  $steps = array();
-  foreach(module_list() as $module) {
-    if($data = module_invoke($module, 'steps')) {
-      $steps = array_merge($data, $steps);
-    }
-  }
-  */
-  
-  return $steps;
+function _steps_redirect($path) {
+  drupal_goto($path);
 }
-
-/**
- * Implements hook_enable()
- */
-function steps_enable() {
-  /**
-   * Create all menu links implementing hook_wizard
-   */
-  $wizards = _wizard_implements();
-  foreach($wizards as $key => $element) {
-    $wizard = new stdClass();
-    $wizard->wizard = $key;
-    $wizard->title = check_plain($element['title']);
-    $wizard->main_path = check_plain($element['main_path']);
-    $wizard->start_path = check_plain($element['start_path']);
-    $wizard->end_path = check_plain($element['end_path']);
-    
-    steps_wizard_ops($wizard);
-  }
-  
-  /**
-   * Create all menus implementing hook_steps
-   * There is a problem with how the db_insert is handling array of arrays
-   * like in options and validations
-   */
-  $steps = _steps_implements();
-  foreach($steps as $key => $element) {
-    $step = new stdClass();
-    $step->step = $key;
-    $step->wizard = check_plain($element['wizard']);
-    $step->title = check_plain($element['title']);
-    $step->path = check_plain($element['path']);
-    $step->description = isset($element['description']) ? check_plain($element['description']) : NULL;
-    $step->component_type = $element['component']['type'];
-    $step->component_options = isset($element['component']['options']) ? $element['component']['options'] : NULL;
-    $step->component_validation = isset($element['component']['validation']) ? $element['component']['validation'] : NULL;
-    $step->component_default = isset($element['component']['default']) ? $element['component']['default'] : NULL;
-    $step->component_redirect = isset($element['component']['redirect']) ? $element['component']['redirect'] : NULL;
-    $step->component_value = isset($element['component']['value']) ? $element['component']['value'] : NULL;
-    $step->component_callback = isset($element['component']['callback']) ? $element['component']['callback'] : NULL;
-
-    steps_steps_ops($step);
-  }
-}
-
+ 
 /**
  * Implements hook_permission()
  */
@@ -86,12 +20,12 @@ function steps_permission() {
   // Only create permissions to wizards
   // If we create permissions to steps the whole API becomes really hard to manage
   // but we can create permissions on the wizard level
-  if($wizard = _wizard_implements()) {
-    foreach($wizard as $key => $main) {
+  if($wizards = steps_get_wizards(TRUE)) {
+    foreach($wizardS as $wizard) {
       return array(
         "configure wizard $key" => array(
-          'title' => t("Configure wizard !title", array('!title' => $main['title'])),
-          'description' => t("Configure the wizard !title", array('!title' => $main['title'])),
+          'title' => t("Configure wizard !title", array('!title' => $wizard->title)),
+          'description' => t("Configure the wizard !title", array('!title' => $wizard->title)),
         ),
       );
     }
@@ -121,7 +55,7 @@ function steps_menu() {
   }
   
   // Implement all steps paths
-  if($steps = _steps_implements()) {
+  if($steps = steps_get_steps()) {
     foreach($steps as $key => $step) {
       $items[$step->path] = array(
         'title' => $step->title,
@@ -145,249 +79,6 @@ function steps_menu() {
   );
   
   return $items;
-}
-
-/**
- * Insert and update operations for wizards
- */
-function steps_wizard_ops($wizard) {
-  // Check if the current wizard object exists
-  $result = db_select("steps_wizard", "w")
-            ->fields("w", array("wizard"))
-            ->condition("wizard", $wizard->wizard, "=")
-            ->execute()
-            ->fetchAssoc();  
-  
-  // If it does exists then update it, else, insert it
-  if($result) {
-    db_update("steps_wizard")
-      ->fields(array(
-        'title' => $wizard->title,
-        'main_path' => $wizard->main_path,
-        'start_path' => $wizard->start_path,
-        'end_path' => $wizard->end_path,
-      ))
-      ->condition("wizard", $wizard->wizard, "=")
-      ->execute();
-  }
-  else {
-    db_insert("steps_wizard")
-      ->fields(array(
-        'wizard' => $wizard->wizard,
-        'title' => $wizard->title,
-        'main_path' => $wizard->main_path,
-        'start_path' => $wizard->start_path,
-        'end_path' => $wizard->end_path,
-      ))
-      ->execute();
-  }
-}
-
-function steps_steps_ops($step) {
-  // Check if the current wizard object exists
-  $result = db_select("steps")
-            ->fields("steps")
-            ->condition("step", $step->step, "=")
-            ->execute()
-            ->fetchAssoc();  
-  
-  // If it does exists then update it, else, insert it
-  if($result) {
-    db_update("steps")
-      ->fields(array(
-        'wizard' => $step->wizard,
-        'title' => $step->title,
-        'path' => $step->path,
-        'description' => $step->description,
-        'component_type' => $step->component_type,
-        'component_options' => $step->component_options,
-        'component_validation' => $step->component_validation,
-        'component_default' => $step->component_default,
-        'component_redirect' => $step->component_redirect,
-        'component_value' => $step->component_value,
-        'component_callback' => $step->component_callback,
-      ))
-      ->condition("step", $step->step, "=")
-      ->execute();
-  }
-  else {
-    // error here
-    db_insert("steps")
-      ->fields(array(
-        'step' => $step->step,
-        'wizard' => $step->wizard,
-        'title' => $step->title,
-        'path' => $step->path,
-        'description' => $step->description,
-        'component_type' => $step->component_type,
-        'component_options' => $step->component_options,
-        'component_validation' => $step->component_validation,
-        'component_default' => $step->component_default,
-        'component_redirect' => $step->component_redirect,
-        'component_value' => $step->component_value,
-        'component_callback' => $step->component_callback,
-      ))
-      ->execute();
-  }
-}
-
-/**
- * Gett all wizards from the database
-
-function steps_get_wizard($wizard = NULL, $reset = FALSE) {
-  static $wizards;
-  
-  if(isset($wizard)) {
-    return db_query("SELECT * FROM {steps_wizard} WHERE wizard = :wizard", array(":wizard" => $wizard))->fetchAssoc();  
-  }
-  
-  if(!isset($wizards) || $reset) {
-    $wizards = array();
-    $result = db_query("SELECT * FROM {steps_wizard}")->fetchAll();
-    $wizards = $result;
-  }
-  
-  return $wizards;
-}
- */
-
-function steps_get_wizard($wizard) {
-  ctools_include("export");
-  $result = ctools_export_load_object("steps_wizard", "names", array($wizard));
-  if(isset($result[$wizard])) {
-    return $result[$wizard];
-  }
-}
-
-/**
- * Get all wizards from table or code
- */
-function steps_get_wizards() {
-  ctools_include("export");
-  return ctools_export_crud_load_all("steps_wizard");
-}
-
-/**
- * Delete wizard
- */
-function steps_delete_wizard($wizard) {
-  
-  // Delete all steps
-  $steps = db_query("SELECT * FROM {steps} WHERE wizard = :wizard", array(':wizard' => $wizard))->fetchAll();
-  foreach($steps as $step) {
-    steps_delete_step($step->step);
-  }
-  
-  db_delete("steps_wizard")
-  ->condition("wizard", $wizard, "=")
-  ->execute();
-}
-
-/**
- * Get all steps from the database
- */
-function steps_get_steps($wizard = NULL) {
-  
-  if(isset($wizard)) {
-    $result = db_query("SELECT * FROM {steps} WHERE wizard = :wizard", array(':wizard' => $wizard->wizard))->fetchAll();  
-  }
-  else {
-    $result = db_query("SELECT * FROM {steps}")->fetchAll();
-  }
-  
-  return $result;
-}
-
-/**
- * Get a step
- */
-function steps_get_step($key) {
-  return db_query("SELECT * FROM {steps} WHERE step = :step", array(':step' => $key))->fetchAssoc();
-}
-
-/**
- * Delete step
- */
-function steps_delete_step($step) {
-  db_delete("steps")
-  ->condition("step", $step)
-  ->execute();
-}
-
-/**
- * Get the values of all steps using the same token
- */
-function steps_value_get($token) {
-  $results = db_query("SELECT * FROM {steps_values} WHERE token = :token", array(':token' => $token))->fetchAll();
-  $data = array();
-  foreach($results as $result) {
-    $data[$result->step] = array(
-      'token' => $result->token,
-      'wizard' => $result->wizard,
-      'uid' => $result->uid,
-      'step' => $result->step,
-      'value' => $result->value
-    );
-  }
-  
-  return $data;
-}
-
-/**
- * Perform operations on the steps_values table
- * 
- * @param $op
- * -- insert Insert a value into the steps_value table
- * -- delete Delete a value into the steps_value table
- */
-function steps_value_op($op, $object) {
-  switch ($op) {
-    case "insert":
-       db_insert("steps_values")
-        ->fields(array(
-          'token' => $object['token'],
-          'wizard' => $object['wizard'],
-          'uid' => $object['uid'],
-          'step' => $object['step'],
-          'value' => $object['value'],
-        ))
-        ->execute();
-      break;
-
-    case "delete":
-      db_delete("steps_values")
-        ->condition("token", $object['token'])
-        ->execute();
-      break;
-  } 
-}
-
-/**
- * Get all the steps values for a wizard
- */
-function steps_value_get_by_wizard($wizard) {
-  return db_query("SELECT * FROM {steps_values} WHERE wizard = :wizard", array(':wizard' => $wizard))->fetchAssoc();
-}
-
-/**
- * Get all steps values for a wizard in a given step
- */
-function steps_value_get_by_wizard_and_step($wizard, $step) {
-  return db_query("SELECT * FROM {steps_values} WHERE wizard = :wizard AND step = :step", array(':wizard' => $wizard, ':step' => $step))->fetchAssoc();
-}
-
-/**
- * Simple redirect from the main path to the start path
- */
-function _steps_redirect($path) {
-  drupal_goto($path);
-}
-
-/**
- * Get current step by path
- */
-function steps_get_step_by_path($path) {
-  return db_query("SELECT * FROM {steps} WHERE path = :path", array(':path' => $path))->fetchAssoc();
 }
 
 /**
@@ -595,10 +286,7 @@ function steps_form_submit($form, &$form_state) {
   $finished_object = array_merge($get_build_object, $build_object);
   steps_value_op("insert", $finished_object);
   
-  
-  
   // Save the build object for each time we run submit
-  
   
   // variable_set($variable, $form_state[$variable]['#value']);
   // If there is a redirect with no options go to it

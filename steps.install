@@ -20,6 +20,18 @@ function steps_uninstall() {
 function steps_schema() {
   $schema['steps'] = array(
     'description' => 'The base table for steps.',
+    'export' => array(
+      'key' => 'step',
+      'primay key' => 'step',
+      'identifier' => 'step',
+      'default hook' => 'step_default_steps',
+      'api' => array(
+        'owner' => 'steps',
+        'api' => 'step_default_steps',
+        'minimum_version' => 1,
+        'current_version' => 1,
+      ),
+    ),
     'fields' => array(
       'step' => array(
         'description' => 'The unique key for this step', 
@@ -174,7 +186,7 @@ function steps_schema() {
   );
   
   $schema['steps_values'] = array(
-    'description' => 'Main base table to store values', 
+    'description' => 'Main base table to store values',
     'fields' => array(
       'token' => array(
         'description' => 'The title of this wizard', 

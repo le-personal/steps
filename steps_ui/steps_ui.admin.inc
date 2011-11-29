@@ -1,4 +1,9 @@
 <?php 
+/**
+ ===============================
+ WIZARDS
+ ===============================
+ */
 
 /**
  * Returns a table with all wizards
@@ -93,45 +98,6 @@ function steps_ui_wizard_page() {
 }
 
 /**
- * Validate to see if the machine name is unique
- */
-function _wizard_exists_wizard($value) {
-  $exists = db_query("SELECT wizard FROM {steps_wizard} WHERE wizard = :value", array(':value' => $value))->fetchField();
-  return $exists;
-}
-
-/**
- * Validate to see if the main_path is unique
- */
-function _wizard_exists_mainpath($element, &$form_state, $form) {
-  $value = $element['#value'];
-  if($exists = db_query("SELECT main_path FROM {steps_wizard} WHERE main_path = :value", array(':value' => $value))->fetchField()) {
-    form_error($element, t("The value !value already exists, it must be unique", array('!value' => $value)));
-  }
-}
-
-/**
- * Validate to see if the start_path is unique
- */
-function _wizard_exists_startpath($element, &$form_state, $form) {
-  $value = $element['#value'];
-  
-  if($exists = db_query("SELECT start_path FROM {steps_wizard} WHERE start_path = :value", array(':value' => $value))->fetchField()) {
-    form_error($element, t("The value !value already exists, it must be unique", array('!value' => $value)));
-  }
-}
-
-/**
- * Validate to see if the end_path is unique
- */
-function _wizard_exists_endpath($element, &$form_state, $form) {
-  $value = $element['#value'];
-  if($exists = db_query("SELECT end_path FROM {steps_wizard} WHERE end_path = :value", array(':value' => $value))->fetchField()) {
-    form_error($element, t("The value !value already exists, it must be unique", array('!value' => $value)));
-  }
-}
-
-/**
  * Create wizards form
  */
 function steps_ui_wizard_form($form, $args) {
@@ -150,14 +116,14 @@ function steps_ui_wizard_form($form, $args) {
      
   $form['wizard'] = array(
     '#type' => 'machine_name',
-    '#title' => t("Wizard unique key"),
+    '#title' => t("Machine name"),
     '#required' => TRUE,
     '#maxlenght' => 28,
     '#default_value' => isset($wizard->wizard) ? $wizard->wizard : NULL,
     '#machine_name' => array(
-      'exists' => '_wizard_exists_wizard',
+      'exists' => '_wizard_exists_machinename',
       'source' => array('title'),
-      'label' => t('Wizard'),
+      'label' => t('Machine name'),
       'replace_pattern' => '[^a-z0-9-]+',
       'replace' => '-',
     ),
@@ -202,6 +168,45 @@ function steps_ui_wizard_form($form, $args) {
   );
   
   return $form;
+}
+
+/**
+ * Validate to see if the machine name is unique
+ */
+function _wizard_exists_machinename($value) {
+  $exists = db_query("SELECT wizard FROM {steps_wizard} WHERE wizard = :value", array(':value' => $value))->fetchField();
+  return $exists;
+}
+
+/**
+ * Validate to see if the main_path is unique
+ */
+function _wizard_exists_mainpath($element, &$form_state, $form) {
+  $value = $element['#value'];
+  if($exists = db_query("SELECT main_path FROM {steps_wizard} WHERE main_path = :value", array(':value' => $value))->fetchField()) {
+    form_error($element, t("The value !value already exists, it must be unique", array('!value' => $value)));
+  }
+}
+
+/**
+ * Validate to see if the start_path is unique
+ */
+function _wizard_exists_startpath($element, &$form_state, $form) {
+  $value = $element['#value'];
+  
+  if($exists = db_query("SELECT start_path FROM {steps_wizard} WHERE start_path = :value", array(':value' => $value))->fetchField()) {
+    form_error($element, t("The value !value already exists, it must be unique", array('!value' => $value)));
+  }
+}
+
+/**
+ * Validate to see if the end_path is unique
+ */
+function _wizard_exists_endpath($element, &$form_state, $form) {
+  $value = $element['#value'];
+  if($exists = db_query("SELECT end_path FROM {steps_wizard} WHERE end_path = :value", array(':value' => $value))->fetchField()) {
+    form_error($element, t("The value !value already exists, it must be unique", array('!value' => $value)));
+  }
 }
 
 /**
@@ -276,6 +281,13 @@ function steps_ui_wizard_delete_submit(&$form, &$form_state) {
   
   drupal_goto("admin/structure/steps");
 }
+
+
+/**
+ ===============================
+ STEPS
+ ===============================
+ */
 
 /**
  * Get all steps for a given wizard
@@ -371,21 +383,11 @@ function steps_ui_step_form($form, $args) {
     
   $form['wizard'] = array(
     '#type' => 'textfield',
-    '#title' => t("Wizard key"),
+    '#title' => t("Wizard"),
     '#required' => TRUE,
     '#disabled' => TRUE,
     '#default_value' => isset($step['wizard']) ? $step['wizard'] : $args['build_info']['args'][0],
   );
-  
-  $form['step'] = array(
-    '#type' => 'textfield',
-    '#title' => t("Step unique key"),
-    '#required' => TRUE,
-    '#default_value' => isset($step['step']) ? $step['step'] : NULL,
-  );
-  if(isset($step->step)) {
-    $form['step']['#disabled'] = TRUE;  
-  }  
   
   $form['title'] = array(
     '#type' => 'textfield',
@@ -395,12 +397,32 @@ function steps_ui_step_form($form, $args) {
     '#default_value' => isset($step['title']) ? $step['title'] : NULL,
   );
   
+  $form['step'] = array(
+    '#type' => 'machine_name',
+    '#title' => t("Machine name"),
+    '#required' => TRUE,
+    '#default_value' => isset($step['step']) ? $step['step'] : NULL,
+    '#maxlenght' => 28,
+    '#machine_name' => array(
+      'exists' => '_step_exists_machinename',
+      'source' => array('title'),
+      'label' => t('Machine name'),
+      'replace_pattern' => '[^a-z0-9-]+',
+      'replace' => '-',
+    ),
+  );
+  
+  if(isset($step->step)) {
+    $form['step']['#disabled'] = TRUE;  
+  }  
+  
   $form['path'] = array(
     '#type' => 'textfield',
     '#title' => t("Path"),
     '#description' => t("This is the step path"),
     '#required' => TRUE,
   	'#default_value' => isset($step['path']) ? $step['path'] : NULL,
+  	'#element_validate' => array("_step_exists_path"),
   );
   
   $form['description'] = array(
@@ -412,7 +434,7 @@ function steps_ui_step_form($form, $args) {
   );
   
   $form['component_type'] = array(
-    '#type' => 'select',
+    '#type' => 'radios',
     '#title' => t("Component Type"),
     '#description' => t("Select a component type"),
     '#required' => TRUE,
@@ -425,7 +447,7 @@ function steps_ui_step_form($form, $args) {
       'markup' => t("Markup"),
       'form' => t("Custom Form"),
     ),
-    '#default_value' => isset($step['component_type']) ? $step['component_type'] : NULL,
+    '#default_value' => isset($step['component_type']) ? $step['component_type'] : "radios",
   );
   
   $form['component_options'] = array(
@@ -434,6 +456,8 @@ function steps_ui_step_form($form, $args) {
     '#title' => t("Component options"),
     '#description' => t("Enter the array of options, one per line, piped. Example: no|Disabled yes|Enabled"),
     '#default_value' => isset($step['component_options']) ? $step['component_options'] : NULL,
+    '#process' => array('ctools_dependent_process'),
+    '#dependency' => array('radio:component_type' => array('radios', 'select', 'checkboxes')),
   );
   
   $form['component_validation'] = array(
@@ -442,13 +466,17 @@ function steps_ui_step_form($form, $args) {
     '#title' => t("Component validation"),
     '#description' => t("Enter the array of validation options, one per line, piped. Example: no|path1 yes|path2"),
     '#default_value' => isset($step['component_validation']) ? $step['component_validation'] : NULL,
+    '#process' => array('ctools_dependent_process'),
+    '#dependency' => array('radio:component_type' => array('radios', 'select')),
   );
   
   $form['component_default'] = array(
-    '#type' => 'textfield',
+    '#type' => 'textarea',
     '#title' => t("Default"),
     '#description' => t("Write the default option"),
   	'#default_value' => isset($step['component_default']) ? $step['component_default'] : NULL,
+  	'#process' => array('ctools_dependent_process'),
+    '#dependency' => array('radio:component_type' => array('radios', 'select', 'textfield', 'textarea')),
   );
   
   $form['component_redirect'] = array(
@@ -456,6 +484,8 @@ function steps_ui_step_form($form, $args) {
     '#title' => t("Redirect path"),
     '#description' => t("Write the path to redirect"),
     '#default_value' => isset($step['component_redirect']) ? $step['component_redirect'] : NULL,
+    '#process' => array('ctools_dependent_process'),
+    '#dependency' => array('radio:component_type' => array('textfield', 'textarea', 'checkboxes', 'form', 'markup')),
   );
   
   $form['component_value'] = array(
@@ -464,6 +494,8 @@ function steps_ui_step_form($form, $args) {
   	'#rows' => 10,
     '#description' => t("Value of markup"),
   	'#default_value' => isset($step['component_value']) ? $step['component_value'] : NULL,
+  	'#process' => array('ctools_dependent_process'),
+    '#dependency' => array('radio:component_type' => array('markup')),
   );
   
   $form['component_callback'] = array(
@@ -471,6 +503,8 @@ function steps_ui_step_form($form, $args) {
     '#title' => t("Callback name"),
     '#description' => t("Write the name of the function to use. It needs to be in a .module file"),
   	'#default_value' => isset($step['component_callback']) ? $step['component_callback'] : NULL,
+  	'#process' => array('ctools_dependent_process'),
+    '#dependency' => array('radio:component_type' => array('form')),
   );
   
   $form['actions']['#type'] = 'actions';
@@ -481,6 +515,24 @@ function steps_ui_step_form($form, $args) {
   );
   
   return $form;
+}
+
+/**
+ * Validate to see if the machine name is unique
+ */
+function _step_exists_machinename($value) {
+  $exists = db_query("SELECT step FROM {steps} WHERE step = :value", array(':value' => $value))->fetchField();
+  return $exists;
+}
+
+/**
+ * Validate to see if the path is unique
+ */
+function _step_exists_path($element, &$form_state, $form) {
+  $value = $element['#value'];
+  if($exists = db_query("SELECT path FROM {steps} WHERE path = :value", array(':value' => $value))->fetchField()) {
+    form_error($element, t("The value !value already exists, it must be unique", array('!value' => $value)));
+  }
 }
 
 /**
