@@ -233,7 +233,7 @@ function steps_steps_ops($step) {
 
 /**
  * Gett all wizards from the database
- */
+
 function steps_get_wizard($wizard = NULL, $reset = FALSE) {
   static $wizards;
   
@@ -249,8 +249,19 @@ function steps_get_wizard($wizard = NULL, $reset = FALSE) {
   
   return $wizards;
 }
+ */
 
+function steps_get_wizard($wizard) {
+  ctools_include("export");
+  $result = ctools_export_load_object("steps_wizard", "names", array($wizard));
+  if(isset($result[$wizard])) {
+    return $result[$wizard];
+  }
+}
 
+/**
+ * Get all wizards from table or code
+ */
 function steps_get_wizards() {
   ctools_include("export");
   return ctools_export_crud_load_all("steps_wizard");
@@ -273,7 +284,7 @@ function steps_delete_wizard($wizard) {
 }
 
 /**
- * Gett all steps from the database
+ * Get all steps from the database
  */
 function steps_get_steps($wizard = NULL) {
   
@@ -721,3 +732,4 @@ function steps_features_api() {
   
   return $features;
 }
+ 

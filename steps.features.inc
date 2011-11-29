@@ -1,5 +1,5 @@
 <?php
-
+/*
 function wizard_features_export($data, &$export, $module_name) {
   $export['dependencies']['steps'] = "steps";
   
@@ -52,3 +52,4 @@ function wizard_features_rebuild($module) {
     }
   }
 }
+*/

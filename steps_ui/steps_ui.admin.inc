@@ -28,7 +28,6 @@ function steps_ui_wizard_page() {
   $header[] = array('data' => t('Steps operations'));
   
   $result = steps_get_wizards();
-  dsm($result);
   
   $rows = array();
   $destination = drupal_get_destination();
@@ -94,6 +93,45 @@ function steps_ui_wizard_page() {
 }
 
 /**
+ * Validate to see if the machine name is unique
+ */
+function _wizard_exists_wizard($value) {
+  $exists = db_query("SELECT wizard FROM {steps_wizard} WHERE wizard = :value", array(':value' => $value))->fetchField();
+  return $exists;
+}
+
+/**
+ * Validate to see if the main_path is unique
+ */
+function _wizard_exists_mainpath($element, &$form_state, $form) {
+  $value = $element['#value'];
+  if($exists = db_query("SELECT main_path FROM {steps_wizard} WHERE main_path = :value", array(':value' => $value))->fetchField()) {
+    form_error($element, t("The value !value already exists, it must be unique", array('!value' => $value)));
+  }
+}
+
+/**
+ * Validate to see if the start_path is unique
+ */
+function _wizard_exists_startpath($element, &$form_state, $form) {
+  $value = $element['#value'];
+  
+  if($exists = db_query("SELECT start_path FROM {steps_wizard} WHERE start_path = :value", array(':value' => $value))->fetchField()) {
+    form_error($element, t("The value !value already exists, it must be unique", array('!value' => $value)));
+  }
+}
+
+/**
+ * Validate to see if the end_path is unique
+ */
+function _wizard_exists_endpath($element, &$form_state, $form) {
+  $value = $element['#value'];
+  if($exists = db_query("SELECT end_path FROM {steps_wizard} WHERE end_path = :value", array(':value' => $value))->fetchField()) {
+    form_error($element, t("The value !value already exists, it must be unique", array('!value' => $value)));
+  }
+}
+
+/**
  * Create wizards form
  */
 function steps_ui_wizard_form($form, $args) {
@@ -102,31 +140,40 @@ function steps_ui_wizard_form($form, $args) {
   if(isset($args['build_info']['args'][0])) {
     $wizard = steps_get_wizard($args['build_info']['args'][0]);  
   }
-    
-  $form['wizard'] = array(
-    '#type' => 'textfield',
-    '#title' => t("Wizard unique key"),
-    '#required' => TRUE,
-    '#default_value' => isset($wizard['wizard']) ? $wizard['wizard'] : NULL,
-  );
-  
-  if(isset($wizard['wizard'])) {
-    $form['wizard']['#disabled'] = TRUE;
-  }
   
   $form['title'] = array(
     '#type' => 'textfield',
     '#title' => t("Wizard title"),
     '#required' => TRUE,
-    '#default_value' => isset($wizard['title']) ? $wizard['title'] : NULL,
+    '#default_value' => isset($wizard->title) ? $wizard->title : NULL,
   );
+     
+  $form['wizard'] = array(
+    '#type' => 'machine_name',
+    '#title' => t("Wizard unique key"),
+    '#required' => TRUE,
+    '#maxlenght' => 28,
+    '#default_value' => isset($wizard->wizard) ? $wizard->wizard : NULL,
+    '#machine_name' => array(
+      'exists' => '_wizard_exists_wizard',
+      'source' => array('title'),
+      'label' => t('Wizard'),
+      'replace_pattern' => '[^a-z0-9-]+',
+      'replace' => '-',
+    ),
+  );
+  
+  if(isset($wizard->wizard)) {
+    $form['wizard']['#disabled'] = TRUE;
+  }
   
   $form['main_path'] = array(
     '#type' => 'textfield',
     '#title' => t("Main path"),
     '#description' => t("Steps will use the main path to create a menu link which can be used to start the wizard"),
     '#required' => TRUE,
-  	'#default_value' => isset($wizard['main_path']) ? $wizard['main_path'] : NULL,
+  	'#default_value' => isset($wizard->main_path) ? $wizard->main_path : NULL,
+  	'#element_validate' => array('_wizard_exists_mainpath'),
   );
   
   $form['start_path'] = array(
@@ -134,7 +181,8 @@ function steps_ui_wizard_form($form, $args) {
     '#title' => t("Start path"),
     '#description' => t("This is the first step that will be called"),
     '#required' => TRUE,
-  	'#default_value' => isset($wizard['start_path']) ? $wizard['start_path'] : NULL,
+  	'#default_value' => isset($wizard->start_path) ? $wizard->start_path : NULL,
+  	'#element_validate' => array('_wizard_exists_startpath'),
   );
   
   $form['end_path'] = array(
@@ -142,7 +190,8 @@ function steps_ui_wizard_form($form, $args) {
     '#title' => t("End path"),
     '#description' => t("This is the last step. usually, to provent problems, this page is a thanks page or a confirmation page, your wizard must end in this path and the previous to last step must redirect here"),
     '#required' => TRUE,
-  	'#default_value' => isset($wizard['end_path']) ? $wizard['end_path'] : NULL,
+  	'#default_value' => isset($wizard->end_path) ? $wizard->end_path : NULL,
+  	'#element_validate' => array('_wizard_exists_endpath'),
   );
   
   $form['actions']['#type'] = 'actions';
@@ -188,6 +237,7 @@ function steps_ui_wizard_form_submit(&$form, &$form_state) {
 
 /**
  * Delete steps
+ Change to confirmation_form
  */
 function steps_ui_wizard_delete($form, $args) {
   $form = array();
@@ -201,24 +251,13 @@ function steps_ui_wizard_delete($form, $args) {
     '#value' => $wizard,
   );
   
-  drupal_set_title(t("Are you sure you want to delete the wizard !wizard?", array('!wizard' => $wizard['wizard'])));
-  
-  $form['message'] = array(
-    '#markup' => t("This will also delete all steps related to this wizard.")
-  );
-  
-  $form['actions']['#type'] = 'actions';
-  
-  $form['actions']['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Delete'),
-    '#submit' => array("steps_ui_wizard_delete_delete"),
-  );
-  
-  $form['actions']['cancel'] = array(
-    '#type' => 'submit',
-    '#value' => t("Cancel"),
-  	'#submit' => array("steps_ui_wizard_delete_cancel"),
+  $form = confirm_form($form, 
+    t('Are you sure you want to delete the wizard !wizard?', array('!wizard' => $wizard->wizard)), 
+    'admin/structure/steps', 
+    '<p>' . t('Deleting this wizard cannot be undone.') . '</p>', 
+    t('Delete'), 
+    t('Cancel'), 
+    'confirm'
   );
   
   return $form;
@@ -227,19 +266,11 @@ function steps_ui_wizard_delete($form, $args) {
 /**
  * Submit callback for delete operation
  */
-function steps_ui_wizard_delete_delete(&$form, &$form_state) {
+function steps_ui_wizard_delete_submit(&$form, &$form_state) {
   $values = $form_state['values'];
     
-  steps_delete_wizard($values['_wizard']["wizard"]);
+  steps_delete_wizard($values['_wizard']->wizard);
   
-  drupal_goto("admin/structure/steps");
-}
-
-/**
- * Submit callback for cancel operation
- */
-function steps_ui_wizard_delete_cancel(&$form, &$form_state) {
-  $values = $form_state['values'];
   drupal_goto("admin/structure/steps");
 }
 
