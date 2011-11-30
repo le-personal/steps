@@ -14,14 +14,12 @@ function steps_get_steps($wizard = NULL) {
   if(isset($wizard)) {
     // $result = db_query("SELECT * FROM {steps} WHERE wizard = :wizard", array(':wizard' => $wizard->wizard))->fetchAll();
     $result = ctools_export_load_object("steps", "conditions", array('wizard' => $wizard));
+    return $result;
   }
   else {
     // $result = db_query("SELECT * FROM {steps}")->fetchAll();
     $result = ctools_export_load_object("steps", "all");
-  }
-  
-  if(isset($result[$wizard])) {
-    return $result[$wizard];
+    return $result;
   }
 }
 
@@ -31,9 +29,7 @@ function steps_get_steps($wizard = NULL) {
 function steps_get_step($key) { 
   ctools_include("export");
   $result = ctools_export_load_object("steps", "names", array($key));
-  if(isset($result[$key])) {
-    return $result[$key];
-  }
+  return $result[$key];
    
   // return db_query("SELECT * FROM {steps} WHERE step = :step", array(':step' => $key))->fetchAssoc();
 }
@@ -45,9 +41,13 @@ function steps_get_step_by_path($path) {
   ctools_include("export");
   // return db_query("SELECT * FROM {steps} WHERE path = :path", array(':path' => $path))->fetchAssoc();
   $result = ctools_export_load_object("steps", "conditions", array('path' => $path));
-  if(isset($result[$key])) {
-    return $result[$key];
+
+  $results = array();
+  foreach($result as $step) {
+    $results = $step;
   }
+  
+  return $results;
 }
 
 /**

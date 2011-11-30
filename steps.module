@@ -21,9 +21,9 @@ function steps_permission() {
   // If we create permissions to steps the whole API becomes really hard to manage
   // but we can create permissions on the wizard level
   if($wizards = steps_get_wizards(TRUE)) {
-    foreach($wizardS as $wizard) {
+    foreach($wizards as $wizard) {
       return array(
-        "configure wizard $key" => array(
+        "configure wizard $wizard->title" => array(
           'title' => t("Configure wizard !title", array('!title' => $wizard->title)),
           'description' => t("Configure the wizard !title", array('!title' => $wizard->title)),
         ),
@@ -97,9 +97,9 @@ function steps_form($form, $args) {
   // Should I check for access?
   
   $step = steps_get_step($args['build_info']['args'][0]);
-  $stepkey = $step['step'];
-  $wizard = steps_get_wizard($step['wizard']);
-  $current_path = $step['path'];
+  $stepkey = $step->step;
+  $wizard = steps_get_wizard($step->wizard);
+  $current_path = $step->path;
   
   drupal_alter("steps_form_pre", $form);
   drupal_alter("steps_form_pre_" . $stepkey, $form);
@@ -109,10 +109,10 @@ function steps_form($form, $args) {
     '#value' => $step,
   );
   
-  if($wizard['start_path'] == $current_path) {
+  if($wizard->start_path == $current_path) {
     // for protection, delete all records that correspond to this user
     db_delete("steps_values")
-      ->condition("wizard", $step['wizard'])
+      ->condition("wizard", $step->wizard)
       ->condition("uid", $user->uid)
       ->execute();
     
@@ -120,14 +120,14 @@ function steps_form($form, $args) {
     $token = drupal_hash_base64(drupal_random_bytes(55));
     // The object will be incomplete until we add the step and the value, we just initialize it here
     $build_object = array(
-      'wizard' => $wizard['wizard'],
+      'wizard' => $wizard->wizard,
       'uid' => $user->uid,
       'token' => $token
     );
   }
   else {
     // get the object using the wizard and the step and pass it again
-    $object = steps_value_get_by_wizard($step['wizard']);
+    $object = steps_value_get_by_wizard($step->wizard);
     $token = $object['token'];
     
     $build_object = array(
@@ -146,20 +146,20 @@ function steps_form($form, $args) {
   // Switch depending on the component_type of the step
   // this way will be easier to ignore elements and validate them
   // depending on our own specifications
-  drupal_alter("steps_form_" . $stepkey . '_' . $step['component_type'], $form);
-  switch($step['component_type']) {
+  drupal_alter("steps_form_" . $stepkey . '_' . $step->component_type, $form);
+  switch($step->component_type) {
     case "radios" :
     case "select" :
       $form[$stepkey] = array(
-        '#type' => $step['component_type'],
-        '#title' => isset($step['description']) ? $step['description'] : $step['title'],
-        '#description' => $step['description'],
-        '#default_value' => $step['component_default'],
+        '#type' => $step->component_type,
+        '#title' => isset($step->description) ? $step->description : $step->title,
+        // '#description' => $step->description,
+        '#default_value' => $step->component_default,
         '#required' => TRUE,
       );
       
-      if(isset($step['component_options'])) {
-        $options_arr = steps_pipelined_process_options($step['component_options']);
+      if(isset($step->component_options)) {
+        $options_arr = steps_pipelined_process_options($step->component_options);
         $form[$stepkey]['#options'] = $options_arr;
       }
       
@@ -168,9 +168,9 @@ function steps_form($form, $args) {
     case "textfield":
       $form[$stepkey] = array(
         '#type' => "textfield",
-        '#title' => isset($step['description']) ? $step['description'] : $step['title'],
-        '#description' => $step['description'],
-        '#default_value' => $step['component_default'],
+        '#title' => isset($step->description) ? $step->description : $step->title,
+        // '#description' => $step->description,
+        '#default_value' => $step->component_default,
         '#required' => TRUE,
       );
 
@@ -179,9 +179,9 @@ function steps_form($form, $args) {
     case "textarea":
       $form[$stepkey] = array(
         '#type' => "textarea",
-        '#title' => isset($step['description']) ? $step['description'] : $step['title'],
-        '#description' => $step['description'],
-        '#default_value' => $step['component_default'],
+        '#title' => isset($step->description) ? $step->description : $step->title,
+        // '#description' => $step->description,
+        '#default_value' => $step->component_default,
         '#required' => TRUE,
       );
       break;
@@ -189,13 +189,13 @@ function steps_form($form, $args) {
     case "checkboxes":
       $form[$stepkey] = array(
         '#type' => "checkboxes",
-        '#title' => isset($step['description']) ? $step['description'] : $step['title'],
-        '#description' => $step['description'],
+        '#title' => isset($step->description) ? $step->description : $step->title,
+        // '#description' => $step->description,
         '#required' => TRUE,
       );
       
       if(isset($step['component_options'])) {
-        $options_arr = steps_pipelined_process_options($step['component_options']);
+        $options_arr = steps_pipelined_process_options($step->component_options);
         $form[$stepkey]['#options'] = $options_arr;
       }
       break;
@@ -203,8 +203,8 @@ function steps_form($form, $args) {
     case "markup":
       $form[$stepkey] = array(
         '#type' => "markup",
-        '#title' => $step['title'],
-        '#markup' => $step['component_value'],
+        '#title' => $step->title,
+        '#markup' => $step->component_value,
       );
       break;
 
@@ -212,7 +212,7 @@ function steps_form($form, $args) {
       // Print the form here
       // $form = array_merge($form, drupal_get_form($step["component_callback"], $step));
       // drupal_alter("steps_form_" . $step["component_callback"], $form);
-      $function = $step["component_callback"];
+      $function = $step->component_callback;
       if(function_exists($function)) {
         $form[] = $function($form);
       }
@@ -221,7 +221,7 @@ function steps_form($form, $args) {
   }
 
   // Check if the current path is the final path
-  if($wizard['end_path'] == $current_path) {
+  if($wizard->end_path == $current_path) {
     $final_path = TRUE;
   }
   else {
@@ -256,7 +256,7 @@ function steps_form($form, $args) {
  */
 function steps_redirect_to($step, $option) {
   // Make them piped
-  $val_arr = steps_pipelined_process_options($step['component_validation']);
+  $val_arr = steps_pipelined_process_options($step->component_validation);
   return $val_arr[$option];
 }
 
@@ -266,8 +266,8 @@ function steps_redirect_to($step, $option) {
 function steps_form_submit($form, &$form_state) {
   // Variable has the key of this step
   $step = $form_state['complete form']['_step']['#value'];
-  $stepkey = $form_state['complete form']['_step']['#value']['step'];
-  $component_type = $form_state['complete form']['_step']['#value']['component_type'];
+  $stepkey = $form_state['complete form']['_step']['#value']->step;
+  $component_type = $form_state['complete form']['_step']['#value']->component_type;
   
   $get_build_object = $form_state['values']['_build_object'];
   $build_object = array(
@@ -276,6 +276,7 @@ function steps_form_submit($form, &$form_state) {
   
   // Check if the form type is a checklist, in which case we need to
   // serialize the value
+  // dsm($form_state['values'][$stepkey]);
   if($component_type == "checkboxes") {
     $build_object['value'] = serialize($form_state['values'][$stepkey]);
   }
@@ -300,13 +301,13 @@ function steps_form_submit($form, &$form_state) {
   // $_POST["test_" . $stepkey] = array_merge($_POST["test_" . $stepkey], $finished_object);
   
   // Check if the path we're redirecting is the last one
-  $wizard = steps_get_wizard($step['wizard']);
+  $wizard = steps_get_wizard($step->wizard);
   // If the path we're redirecting is the path where the wizard ends then
   // even though the submit callback doesn't really know that the last form
   // callback is showing up, we tell the submit callback that this is the end
   // and that there will be no other submit callback run (no button anymore)
   // so perform all the last minute operations in the previous to last submit callback
-  if($step['component_redirect'] == $wizard['end_path']) {
+  if($step->component_redirect == $wizard->end_path) {
     // Also check if the form has no component_redirect but if the 
     // selected option had as the validation path to redirect to the $wizard["end_path"]
     
@@ -321,11 +322,11 @@ function steps_form_submit($form, &$form_state) {
       ->execute();
       
     // Now we process the data array here using hook_steps_$wizard
-    steps_invoke($step['wizard'], $data);
+    steps_invoke($step->wizard, $data);
   }
   
-  if(!empty($step['component_redirect'])) { 
-    drupal_goto($step['component_redirect']);
+  if(!empty($step->component_redirect)) { 
+    drupal_goto($step->component_redirect);
   }
   else {
     $option = $form_state['values'][$stepkey];

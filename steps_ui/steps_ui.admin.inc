@@ -1,4 +1,19 @@
-<?php 
+<?php
+
+function _steps_export_type($export) {
+  switch($export) {
+    case 1:
+    return t("Normal");
+    
+    case 2:
+    return t("Default");
+    
+    case 3:
+    return t("Overriden");
+  }
+}
+
+ 
 /**
  ===============================
  WIZARDS
@@ -38,7 +53,7 @@ function steps_ui_wizard_page() {
   $destination = drupal_get_destination();
   foreach ($result as $data) {
     $row = array();
-    $row['data']['wizard'] = l(check_plain($data->title), "admin/structure/steps/wizard/$data->wizard/steps");
+    $row['data']['wizard'] = '<strong>' . l(check_plain($data->title), "admin/structure/steps/wizard/$data->wizard/steps") . '</strong><br />' . _steps_export_type($data->export_type);
     $row['data']['main_path'] = check_plain($data->main_path);
     $row['data']['start_path'] = check_plain($data->start_path);
     $row['data']['end_path'] = check_plain($data->end_path);
@@ -236,8 +251,8 @@ function steps_ui_wizard_form_submit(&$form, &$form_state) {
     )
   );
   
-  // Clear the cache to rebuild menu
-  menu_cache_clear_all();
+   // Clear the cache to rebuild menu
+  menu_rebuild();
   
   // Redirect to the steps page for the newly created wizard
   drupal_goto("admin/structure/steps/wizard/$wizard->wizard/steps");  
@@ -318,19 +333,12 @@ function steps_ui_steps_page($wizard) {
   );
   $header[] = array('data' => t('Operations'));
   
-  $query = db_select('steps')->extend('PagerDefault')->extend('TableSort');
-  $result = $query
-    ->fields('steps')
-    ->condition("wizard", $wizard, "=")
-    ->orderByHeader($header)
-    ->limit(50)
-    ->execute();
-  
+  $result = steps_get_steps($wizard);
   $rows = array();
   $destination = drupal_get_destination();
   foreach ($result as $data) {
     $row = array();
-    $row['data']['step'] = check_plain($data->step);
+    $row['data']['step'] = '<strong>' . check_plain($data->step) . '</strong><br />' . _steps_export_type($data->export_type);
     $row['data']['title'] = check_plain($data->title);
     $row['data']['path'] = check_plain($data->path);
     $row['data']['type'] = check_plain($data->component_type);
@@ -386,22 +394,22 @@ function steps_ui_step_form($form, $args) {
     '#title' => t("Wizard"),
     '#required' => TRUE,
     '#disabled' => TRUE,
-    '#default_value' => isset($step['wizard']) ? $step['wizard'] : $args['build_info']['args'][0],
+    '#default_value' => isset($step->wizard) ? $step->wizard : $args['build_info']['args'][0],
   );
   
   $form['title'] = array(
     '#type' => 'textfield',
     '#title' => t("Title"),
-    '#description' => t("Step title"),
+    '#description' => t("This will be the form title and will show as the page title"),
     '#required' => TRUE,
-    '#default_value' => isset($step['title']) ? $step['title'] : NULL,
+    '#default_value' => isset($step->title) ? $step->title : NULL,
   );
   
   $form['step'] = array(
     '#type' => 'machine_name',
     '#title' => t("Machine name"),
     '#required' => TRUE,
-    '#default_value' => isset($step['step']) ? $step['step'] : NULL,
+    '#default_value' => isset($step->step) ? $step->step : NULL,
     '#maxlenght' => 28,
     '#machine_name' => array(
       'exists' => '_step_exists_machinename',
@@ -419,10 +427,10 @@ function steps_ui_step_form($form, $args) {
   $form['path'] = array(
     '#type' => 'textfield',
     '#title' => t("Path"),
-    '#description' => t("This is the step path"),
+    '#description' => t("Step path"),
     '#required' => TRUE,
-  	'#default_value' => isset($step['path']) ? $step['path'] : NULL,
-  	'#element_validate' => array("_step_exists_path"),
+  	'#default_value' => isset($step->path) ? $step->path : NULL,
+  	// '#element_validate' => array("_step_exists_path"),
   );
   
   $form['description'] = array(
@@ -430,7 +438,7 @@ function steps_ui_step_form($form, $args) {
     '#title' => t("Description"),
     '#description' => t("The description will be used as a help message"),
     '#required' => FALSE,
-  	'#default_value' => isset($step['description']) ? $step['description'] : NULL,
+  	'#default_value' => isset($step->description) ? $step->description : NULL,
   );
   
   $form['component_type'] = array(
@@ -447,7 +455,7 @@ function steps_ui_step_form($form, $args) {
       'markup' => t("Markup"),
       'form' => t("Custom Form"),
     ),
-    '#default_value' => isset($step['component_type']) ? $step['component_type'] : "radios",
+    '#default_value' => isset($step->component_type) ? $step->component_type : "radios",
   );
   
   $form['component_options'] = array(
@@ -455,7 +463,7 @@ function steps_ui_step_form($form, $args) {
     '#rows' => 10,
     '#title' => t("Component options"),
     '#description' => t("Enter the array of options, one per line, piped. Example: no|Disabled yes|Enabled"),
-    '#default_value' => isset($step['component_options']) ? $step['component_options'] : NULL,
+    '#default_value' => isset($step->component_options) ? $step->component_options : NULL,
     '#process' => array('ctools_dependent_process'),
     '#dependency' => array('radio:component_type' => array('radios', 'select', 'checkboxes')),
   );
@@ -465,7 +473,7 @@ function steps_ui_step_form($form, $args) {
     '#rows' => 10,
     '#title' => t("Component validation"),
     '#description' => t("Enter the array of validation options, one per line, piped. Example: no|path1 yes|path2"),
-    '#default_value' => isset($step['component_validation']) ? $step['component_validation'] : NULL,
+    '#default_value' => isset($step->component_validation) ? $step->component_validation : NULL,
     '#process' => array('ctools_dependent_process'),
     '#dependency' => array('radio:component_type' => array('radios', 'select')),
   );
@@ -474,18 +482,9 @@ function steps_ui_step_form($form, $args) {
     '#type' => 'textarea',
     '#title' => t("Default"),
     '#description' => t("Write the default option"),
-  	'#default_value' => isset($step['component_default']) ? $step['component_default'] : NULL,
+  	'#default_value' => isset($step->component_default) ? $step->component_default : NULL,
   	'#process' => array('ctools_dependent_process'),
     '#dependency' => array('radio:component_type' => array('radios', 'select', 'textfield', 'textarea')),
-  );
-  
-  $form['component_redirect'] = array(
-    '#type' => 'textfield',
-    '#title' => t("Redirect path"),
-    '#description' => t("Write the path to redirect"),
-    '#default_value' => isset($step['component_redirect']) ? $step['component_redirect'] : NULL,
-    '#process' => array('ctools_dependent_process'),
-    '#dependency' => array('radio:component_type' => array('textfield', 'textarea', 'checkboxes', 'form', 'markup')),
   );
   
   $form['component_value'] = array(
@@ -493,18 +492,27 @@ function steps_ui_step_form($form, $args) {
     '#title' => t("Value"),
   	'#rows' => 10,
     '#description' => t("Value of markup"),
-  	'#default_value' => isset($step['component_value']) ? $step['component_value'] : NULL,
+  	'#default_value' => isset($step->component_value) ? $step->component_value : NULL,
   	'#process' => array('ctools_dependent_process'),
     '#dependency' => array('radio:component_type' => array('markup')),
   );
-  
+
   $form['component_callback'] = array(
     '#type' => 'textfield',
     '#title' => t("Callback name"),
     '#description' => t("Write the name of the function to use. It needs to be in a .module file"),
-  	'#default_value' => isset($step['component_callback']) ? $step['component_callback'] : NULL,
+  	'#default_value' => isset($step->component_callback) ? $step->component_callback : NULL,
   	'#process' => array('ctools_dependent_process'),
     '#dependency' => array('radio:component_type' => array('form')),
+  );
+  
+  $form['component_redirect'] = array(
+    '#type' => 'textfield',
+    '#title' => t("Redirect path"),
+    '#description' => t("Write the path to redirect"),
+    '#default_value' => isset($step->component_redirect) ? $step->component_redirect : NULL,
+    '#process' => array('ctools_dependent_process'),
+    '#dependency' => array('radio:component_type' => array('textfield', 'textarea', 'checkboxes', 'form', 'markup')),
   );
   
   $form['actions']['#type'] = 'actions';
@@ -556,6 +564,9 @@ function steps_ui_step_form_submit(&$form, &$form_state) {
   $step->component_callback = $values['component_callback'];
   
   steps_steps_ops($step);
+  
+  // Clear the cache to rebuild menu
+  menu_rebuild();
   
   drupal_set_message("Step was saved");
 }
