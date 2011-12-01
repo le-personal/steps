@@ -194,7 +194,7 @@ function steps_form($form, $args) {
         '#required' => TRUE,
       );
       
-      if(isset($step['component_options'])) {
+      if(isset($step->component_options)) {
         $options_arr = steps_pipelined_process_options($step->component_options);
         $form[$stepkey]['#options'] = $options_arr;
       }
