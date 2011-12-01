@@ -43,7 +43,7 @@ function steps_schema() {
       'wizard' => array(
         'description' => 'The wizard key', 
         'type' => 'varchar', 
-        'length' => 12, 
+        'length' => 48, 
         'not null' => TRUE, 
         'default' => '',
       ), 
@@ -88,11 +88,10 @@ function steps_schema() {
         'not null' => FALSE, 
       ),
       'component_default' => array(
-        'description' => 'Default values', 
-        'type' => 'varchar', 
-        'length' => 255, 
+         'description' => 'Validation', 
+        'type' => 'text', 
+        'size' => 'big',
         'not null' => FALSE, 
-        'default' => '',
       ),
       'component_redirect' => array(
         'description' => 'Redirect path', 
@@ -149,7 +148,7 @@ function steps_schema() {
       'wizard' => array(
         'description' => 'The wizard key', 
         'type' => 'varchar', 
-        'length' => 32, 
+        'length' => 48, 
         'not null' => TRUE, 
         'default' => '',
       ), 
@@ -198,7 +197,7 @@ function steps_schema() {
       'wizard' => array(
         'description' => 'The wizard key', 
         'type' => 'varchar', 
-        'length' => 32, 
+        'length' => 48, 
         'not null' => TRUE, 
         'default' => '',
       ),
@@ -225,20 +224,4 @@ function steps_schema() {
   );
 
   return $schema;
-}
-
-function steps_update_7100() {
-  db_change_field("steps", "component_options", "component_options", 
-    array('type' => 'text', 'size' => "big"));
-
-  db_change_field("steps", "component_validation", "component_validation", 
-    array('type' => 'text', 'size' => "big"));
-    
-  db_change_field("steps", "component_value", "component_value", 
-    array('type' => 'text', 'size' => "big"));
-}
-
-function steps_update_7200() {
-  db_change_field("steps_values", "value", "value",
-    array("type" => "text", "size" => "big"));
 }
