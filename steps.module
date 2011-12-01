@@ -280,6 +280,9 @@ function steps_form_submit($form, &$form_state) {
   if($component_type == "checkboxes") {
     $build_object['value'] = serialize($form_state['values'][$stepkey]);
   }
+  elseif($component_type == "markup") {
+    $build_object['value'] = NULL;
+  }
   else {
     $build_object['value'] = $form_state['values'][$stepkey];
   }
@@ -293,7 +296,10 @@ function steps_form_submit($form, &$form_state) {
   // If there is a redirect with no options go to it
   
   $steps_wizard = array();
-  $value = $form_state['values'][$stepkey];
+  if($component_type != "markup") {
+    $value = $form_state['values'][$stepkey];  
+  }
+  
   // dsm($form_state);
   
   // We need to remove the database operation and use $_POST to save the values
@@ -395,7 +401,7 @@ function steps_custom_theme() {
   }
   
   // Get all the paths
-  $paths = db_query("SELECT path FROM {steps}")->fetchAll();
+  $paths = steps_get_steps();
   // Loop
   foreach($paths as $path) {
     // Check if the current path is registered as a step path

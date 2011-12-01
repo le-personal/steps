@@ -140,7 +140,7 @@ function steps_ui_wizard_form($form, $args) {
       'source' => array('title'),
       'label' => t('Machine name'),
       'replace_pattern' => '[^a-z0-9-]+',
-      'replace' => '-',
+      'replace' => '_',
     ),
   );
   
@@ -416,7 +416,7 @@ function steps_ui_step_form($form, $args) {
       'source' => array('title'),
       'label' => t('Machine name'),
       'replace_pattern' => '[^a-z0-9-]+',
-      'replace' => '-',
+      'replace' => '_',
     ),
   );
   
