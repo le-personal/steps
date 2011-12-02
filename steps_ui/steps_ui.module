@@ -134,6 +134,110 @@ function steps_ui_menu() {
     'file' => 'steps_ui.admin.inc'
   );
   
+  // Create a new form for edits
+  $wizards = steps_get_wizards(TRUE);
+  foreach($wizards as $wizard) {
+    $items["admin/steps/" . $wizard->wizard] = array(
+      'title' => $wizard->title,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array("steps_ui_step_form", $wizard->wizard),
+      'access arguments' => array("configure form " . $wizard->wizard),
+      'type' => MENU_NORMAL_ITEM,
+    );  
+  }
+  
   return $items;
 }
 
+function steps_ui_step_form($form, $args) {
+  global $user;
+  $form = array();
+  
+  $steps = steps_get_steps($args['build_info']['args'][0]);
+  foreach($steps as $step) {
+    $stepkey = $step->step;
+    
+    switch($step->component_type) {
+      case "radios" :
+      case "select" :
+        $form[$stepkey] = array(
+          '#type' => $step->component_type,
+          '#title' => isset($step->description) ? $step->description : $step->title,
+          // '#description' => $step->description,
+          '#default_value' => $step->component_default,
+          '#required' => TRUE,
+        );
+        
+        if(isset($step->component_options)) {
+          $options_arr = steps_pipelined_process_options($step->component_options);
+          $form[$stepkey]['#options'] = $options_arr;
+        }
+        
+        break;
+        
+      case "textfield":
+        $form[$stepkey] = array(
+          '#type' => "textfield",
+          '#title' => isset($step->description) ? $step->description : $step->title,
+          // '#description' => $step->description,
+          '#default_value' => $step->component_default,
+          '#required' => TRUE,
+        );
+  
+        break;
+        
+      case "textarea":
+        $form[$stepkey] = array(
+          '#type' => "textarea",
+          '#title' => isset($step->description) ? $step->description : $step->title,
+          // '#description' => $step->description,
+          '#default_value' => $step->component_default,
+          '#required' => TRUE,
+        );
+        break;
+        
+      case "checkboxes":
+        $form[$stepkey] = array(
+          '#type' => "checkboxes",
+          '#title' => isset($step->description) ? $step->description : $step->title,
+          // '#description' => $step->description,
+          '#required' => TRUE,
+        );
+        
+        if(isset($step->component_options)) {
+          $options_arr = steps_pipelined_process_options($step->component_options);
+          $form[$stepkey]['#options'] = $options_arr;
+        }
+        break;
+        
+      
+  
+      case "form":
+        // Print the form here
+        // $form = array_merge($form, drupal_get_form($step["component_callback"], $step));
+        // drupal_alter("steps_form_" . $step["component_callback"], $form);
+        $function = $step->component_callback;
+        if(function_exists($function)) {
+          $form[] = $function($form);
+        }
+        
+        break;
+    }
+  }
+  
+   
+  $form['actions']['#type'] = 'actions';
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t("Next"),
+  );
+  
+  $form['#submit'][] = "steps_ui_step_form_submit";
+  
+  return $form;
+}
+
+function steps_ui_step_form_submit($form, &$form_state) {
+  $values = $form_state['values'];
+  
+}
