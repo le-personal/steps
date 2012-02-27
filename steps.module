@@ -246,6 +246,14 @@ function steps_form($form, $args) {
   drupal_alter("steps_form_post_" . $stepkey, $form);
   drupal_alter("steps_form_post", $form);
   
+  // the last step doesn't have a submit callback
+  // by the time we execute this the last submit was executed and we're just
+  // presenting a form with a markup so threre will be no submit callbacks anymore
+  // we check if the current path (the markup form) is the last path defined in the wizard
+  if($_GET["q"] == $wizard->end_path) {
+    _steps_final_step($wizard->wizard, $token);
+  }
+  
   return $form;
 }
 
@@ -283,6 +291,18 @@ function steps_form_submit($form, &$form_state) {
   elseif($component_type == "markup") {
     $build_object['value'] = NULL;
   }
+  elseif($component_type == "form") {
+    // Unset everything we don't need
+    unset($form_state["values"]["_build_object"]);
+    unset($form_state["values"]["form_build_id"]);
+    unset($form_state["values"]["form_token"]);
+    unset($form_state["values"]["form_id"]);
+    unset($form_state["values"]["op"]);
+    unset($form_state["values"]["submit"]);
+    
+    // and serialize the data in $form_state["values"] so send it throught $data
+    $build_object['value'] = serialize($form_state['values']);
+  }
   else {
     $build_object['value'] = $form_state['values'][$stepkey];
   }
@@ -294,13 +314,12 @@ function steps_form_submit($form, &$form_state) {
   
   // variable_set($variable, $form_state[$variable]['#value']);
   // If there is a redirect with no options go to it
-  
+  // dsm($form_state);
   $steps_wizard = array();
   if($component_type != "markup") {
-    $value = $form_state['values'][$stepkey];  
+    // What is doing this line?
+    $value = $form_state['values'];  
   }
-  
-  // dsm($form_state);
   
   // We need to remove the database operation and use $_POST to save the values
   // $_POST[$stepkey] = array_merge($get_build_object, $build_object);
@@ -313,22 +332,12 @@ function steps_form_submit($form, &$form_state) {
   // callback is showing up, we tell the submit callback that this is the end
   // and that there will be no other submit callback run (no button anymore)
   // so perform all the last minute operations in the previous to last submit callback
+
+  // dsm($step);
+  // the component has a redirect and is equal to the end of the wizard
+  // so we know that the component has redirected to the end
   if($step->component_redirect == $wizard->end_path) {
-    // Also check if the form has no component_redirect but if the 
-    // selected option had as the validation path to redirect to the $wizard["end_path"]
-    
-    // Get the token
-    $token = $get_build_object['token'];
-    // Build the array using the token
-    $data = steps_value_get($token);
-    
-    // Delete it from the db
-    db_delete("steps_values")
-      ->condition("token", $token)
-      ->execute();
-      
-    // Now we process the data array here using hook_steps_$wizard
-    steps_invoke($step->wizard, $data);
+    $end = TRUE;
   }
   
   if(!empty($step->component_redirect)) { 
@@ -340,6 +349,24 @@ function steps_form_submit($form, &$form_state) {
   
     drupal_goto($redirect);
   } 
+}
+
+/**
+ * Execute the last operations of the wizard at the end
+ * basically, just invoke all hooks_steps_$wizard
+ * and delete the values saved in the database
+ */
+function _steps_final_step($wizard, $token) {
+    // Build the array using the token
+    $data = steps_value_get($token);
+    
+    // Delete it from the db
+    db_delete("steps_values")
+      ->condition("token", $token)
+      ->execute();
+    
+    // Now we process the data array here using hook_steps_$wizard
+    steps_invoke($wizard, $data);
 }
 
 /**
